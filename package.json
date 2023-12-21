@@ -1,0 +1,25 @@
+{
+  "dependencies": {
+    "@koa/router": "^12.0.1",
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1",
+    "ethers": "^6.9.1",
+    "koa": "^2.14.2",
+    "log4js": "^6.9.1"
+  },
+  "devDependencies": {
+    "@types/koa": "^2.13.12",
+    "@types/koa__router": "^12.0.4",
+    "@types/node": "^20.10.5",
+    "prettier": "^3.1.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "scripts": {
+    "compile": "typechain --target ethers-v5 --out-dir src/typechain 'abis/**/*.json'",
+    "prettier": "prettier --write \"**/*.{js,json,md,ts}\"",
+    "lint": "eslint --config ./.eslintrc.json --ignore-path ./.eslintignore --ext .js,.ts . --fix",
+    "fix": "yarn prettier && yarn lint",
+    "start": "ts-node src/app.ts"
+  }
+}
