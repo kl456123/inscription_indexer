@@ -30,11 +30,14 @@ export class TxSubscriber {
         ) {
           continue;
         }
+        const block = await this.provider.getBlock(rawTx.blockNumber!);
         const tx: Transaction = {
-          content: rawTx.data,
+          txHash,
+          data: rawTx.data,
           from: rawTx.from,
           to: rawTx.to!,
           blockNumber: rawTx.blockNumber!,
+          timestamp: block!.timestamp,
         };
         this.db.txs.push(tx);
         console.log(tx);

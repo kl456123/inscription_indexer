@@ -2,7 +2,9 @@ export type Transaction = {
   from: string;
   to: string;
   blockNumber: number;
-  content: string;
+  txHash: string;
+  data: string;
+  timestamp: number;
 };
 
 export type Token = {
@@ -19,8 +21,32 @@ export type Token = {
 
 export type Inscription = {
   id: number;
-  tick: string;
-  operation: string;
-  amount: number;
+  txHash: string;
+  protocol: string;
+  from: string;
+  to: string;
+  // operationType: string;
+  // operation: Operation;
+  timestamp: number;
+  content: string;
+  contentType: string;
   valid: boolean;
 };
+
+export type Transfer = {
+  tick: string;
+  amount: number;
+};
+
+export type Mint = {
+  tick: string;
+  amount: number;
+};
+
+export type Deploy = {
+  tick: string;
+  max: number;
+  limit: number;
+};
+
+export type Operation = Mint | Deploy | Transfer;
