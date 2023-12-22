@@ -1,7 +1,7 @@
 # inscription_indexer
 
-
 ## Installation
+
 ```
 # prepare env
 cp .env.example .env
