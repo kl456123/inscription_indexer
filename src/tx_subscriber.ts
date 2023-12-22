@@ -5,34 +5,44 @@ import { Database } from "./database";
 
 export class TxSubscriber {
   protected retries: number;
-  protected fastSyncBatch: number;
   constructor(
     protected provider: ethers.JsonRpcProvider,
     protected db: Database,
     protected fromBlock: number,
+    protected fastSyncBatch: number = 20,
     protected confirmation: number = 2,
   ) {
     this.retries = 2;
-    this.fastSyncBatch = 1;
   }
 
   async syncTxsPerBatch(fromBlock: number, toBlock: number) {
-    // parallel subscribe txs from the chain
+    // fetch blocks from the chain parallelly
+    const blockPromises = [];
     for (let blockNum = fromBlock; blockNum <= toBlock; blockNum++) {
-      const block = (await this.provider.getBlock(blockNum))!;
-      for (const txHash of block.transactions) {
-        const rawTx = (await this.provider.getTransaction(txHash))!;
-        // filter inscriptions from block
-        // check if ascii("data:")==0x646174613a,
+      blockPromises.push(this.provider.getBlock(blockNum));
+    }
+    const blocks = await Promise.all(blockPromises);
+
+    for (const block of blocks) {
+      // fetch all transactions parallelly
+      const txPromises = [];
+      for (const txHash of block!.transactions) {
+        txPromises.push(this.provider.getTransaction(txHash));
+      }
+      const rawTxs = await Promise.all(txPromises);
+
+      for (let i = 0; i < rawTxs.length; ++i) {
+        const rawTx = rawTxs[i]!;
+        // filter valid inscriptions from block
+        // NOTE(ascii("data:")==0x646174613a)
         if (
           rawTx.data.length < 12 ||
           rawTx.data.slice(0, 12) !== "0x646174613a"
         ) {
           continue;
         }
-        const block = await this.provider.getBlock(rawTx.blockNumber!);
         const tx: Transaction = {
-          txHash,
+          txHash: block!.transactions[i],
           data: rawTx.data,
           from: rawTx.from,
           to: rawTx.to!,

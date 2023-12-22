@@ -1,4 +1,5 @@
 import { Database } from "./database";
+import { ethers } from "ethers";
 import {
   Transaction,
   Inscription,
@@ -16,13 +17,26 @@ export class TxProcessor {
   ) {}
 
   processTx(txs: Transaction[]) {
+    txs.reverse();
     while (txs.length > 0) {
       const tx = txs.pop()!;
       // remove prefix
-      const data = tx.data.slice(0, 12);
-      data.trimStart();
-      if (data[0] == "{") {
-        const jsonData = JSON.parse(data);
+      const data = Buffer.from(tx.data.slice(2), "hex").toString();
+      const index = data.indexOf(",");
+      if (index === -1) {
+        logger.error("parse error, skip it");
+        continue;
+      }
+      // parse content type
+      let contentType = "text/plain";
+      if (index > 5) {
+        contentType = data.slice(0, index);
+      }
+      // skip commas
+      const content = data.slice(index + 1).trimStart();
+
+      if (content[0] == "{") {
+        const jsonData = JSON.parse(content);
         // protocol type
         const protocol = jsonData["p"];
         if (protocol == "asc-20") {
@@ -52,8 +66,8 @@ export class TxProcessor {
             from: tx.from,
             to: tx.to,
             timestamp: tx.timestamp,
-            content: tx.data,
-            contentType: "text/plain",
+            content,
+            contentType,
             valid,
           };
           this.db.inscriptions.push(inscription);
@@ -76,8 +90,8 @@ export class TxProcessor {
     const token: Token = {
       tick: jsonData["tick"],
       id: this.db.inscriptionNumber,
-      max: jsonData["max"],
-      limit: jsonData["lim"],
+      max: parseInt(jsonData["max"]),
+      limit: parseInt(jsonData["lim"]),
       minted: 0,
       holders: 0,
       numTxs: 0,
@@ -93,13 +107,13 @@ export class TxProcessor {
   // data:,{"p":"asc-20","op":"mint","tick":"dino","amt":"100000000"}
   processMintOperation(tx: Transaction, jsonData: any): boolean {
     const tick = jsonData["tick"];
-    const balances = this.db.balances[tx.to];
+    const balances = this.db.balances[tx.to] ?? {};
     if (!this.db.tokens.hasOwnProperty(tick)) {
-      logger.error(`invalid tick`);
+      logger.error(`invalid tick ${tick}`);
       return false;
     }
-    const amt = jsonData["amt"];
     const tokenInfo = this.db.tokens[tick];
+    const amt = parseInt(jsonData["amt"]);
     if (amt > tokenInfo.limit) {
       logger.error(`mint too many tokens once time`);
       return false;
@@ -116,6 +130,8 @@ export class TxProcessor {
       balances[tick] = amt;
       tokenInfo.holders += 1;
     }
+    // update db
+    this.db.balances[tx.to] = balances;
     tokenInfo.minted += amt;
     tokenInfo.numTxs++;
     if (tokenInfo.minted == tokenInfo.max) {
@@ -129,11 +145,11 @@ export class TxProcessor {
     // check valid token
     const tick = jsonData["tick"];
     if (!this.db.tokens.hasOwnProperty(tick)) {
-      logger.error(`invalid tick`);
+      logger.error(`invalid tick ${tick}`);
       return false;
     }
     const tokenInfo = this.db.tokens[tick];
-    const amt = jsonData["amt"];
+    const amt = parseInt(jsonData["amt"]);
     if (amt === 0) {
       logger.warn(`send nothing`);
       return false;
@@ -143,8 +159,8 @@ export class TxProcessor {
       return false;
     }
     // check from
-    const fromBalance = this.db.balances[tx.from];
-    const toBalance = this.db.balances[tx.to];
+    const fromBalance = this.db.balances[tx.from] ?? {};
+    const toBalance = this.db.balances[tx.to] ?? {};
     if (fromBalance[tick] < amt) {
       logger.error(`exceed from account balance`);
       return false;
@@ -158,6 +174,9 @@ export class TxProcessor {
       tokenInfo.holders++;
     }
     toBalance[tick] += amt;
+    // write back to record
+    this.db.balances[tx.from] = fromBalance;
+    this.db.balances[tx.to] = toBalance;
     return true;
   }
 

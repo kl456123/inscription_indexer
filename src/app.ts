@@ -14,21 +14,29 @@ async function getApp() {
     serverPort: process.env.SERVER_PORT || "3000",
     serverIP: process.env.SERVER_IP || "127.0.0.1",
     url: process.env.MAINNET_URL,
+    fastSyncBatch: 20, // blocks size
+    txSizes: 10, // txs size
+    filterTokens: [],
   };
   const provider = new ethers.JsonRpcProvider(options.url);
-  const currentBlockNumber = await provider.getBlockNumber();
-  const fromBlock = currentBlockNumber - 200;
+  // const currentBlockNumber = await provider.getBlockNumber();
+  const fromBlock = 38529642;
   const db = new Database();
-  const router = getAllRouters();
+  const router = getAllRouters(db);
   app.use(router.routes());
   app.listen(parseInt(options.serverPort), options.serverIP);
 
   // fetch txs and save to db
-  const txSubscriber = new TxSubscriber(provider, db, fromBlock);
+  const txSubscriber = new TxSubscriber(
+    provider,
+    db,
+    fromBlock,
+    options.fastSyncBatch,
+  );
   txSubscriber.start();
 
   // process all saved txs in db
-  const txProcessor = new TxProcessor(db);
+  const txProcessor = new TxProcessor(db, options.txSizes);
   txProcessor.start();
 }
 
