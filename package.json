@@ -25,6 +25,7 @@
     "lint": "eslint --config ./.eslintrc.json --ignore-path ./.eslintignore --ext .js,.ts . --fix",
     "fix": "yarn prettier && yarn lint",
     "test": "mocha --require ts-node/register test/**/*.ts",
+    "client": "ts-node scripts/client.ts",
     "start": "ts-node src/app.ts"
   }
 }
