@@ -1,25 +1,27 @@
-export type Transaction = {
+import { type BigNumber } from "bignumber.js";
+
+export interface Transaction {
   from: string;
   to: string;
   blockNumber: number;
   txHash: string;
   data: string;
   timestamp: number;
-};
+}
 
-export type Token = {
+export interface Token {
   tick: string;
   id: number;
-  max: number;
-  limit: number;
-  minted: number;
+  max: BigNumber;
+  limit: BigNumber;
+  minted: BigNumber;
   holders: number;
   numTxs: number;
   createdAt: number;
   completedAt: number;
-};
+}
 
-export type Inscription = {
+export interface Inscription {
   id: number;
   txHash: string;
   protocol: string;
@@ -31,22 +33,28 @@ export type Inscription = {
   content: string;
   contentType: string;
   valid: boolean;
-};
+}
 
-export type Transfer = {
+export interface Transfer {
   tick: string;
-  amount: number;
-};
+  amount: BigNumber;
+}
 
-export type Mint = {
+export interface Mint {
   tick: string;
-  amount: number;
-};
+  amount: BigNumber;
+}
 
-export type Deploy = {
+export interface Deploy {
   tick: string;
-  max: number;
-  limit: number;
-};
+  max: BigNumber;
+  limit: BigNumber;
+}
+
+export interface TokenBalance {
+  address: string;
+  tick: string;
+  amount: BigNumber;
+}
 
 export type Operation = Mint | Deploy | Transfer;

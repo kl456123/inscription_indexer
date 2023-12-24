@@ -1,7 +1,8 @@
-import { ethers } from "ethers";
+import { type ethers, type Block, type TransactionResponse } from "ethers";
 import { logger } from "./logger";
-import { Transaction } from "./types";
-import { Database } from "./database";
+import { type Transaction } from "./types";
+import { type Database } from "./database";
+import { TransactionEntity } from "./entities";
 
 export class TxSubscriber {
   protected retries: number;
@@ -15,17 +16,18 @@ export class TxSubscriber {
     this.retries = 2;
   }
 
-  async syncTxsPerBatch(fromBlock: number, toBlock: number) {
+  async syncTxsPerBatch(fromBlock: number, toBlock: number): Promise<void> {
     // fetch blocks from the chain parallelly
-    const blockPromises = [];
+    const blockPromises: Array<Promise<null | Block>> = [];
     for (let blockNum = fromBlock; blockNum <= toBlock; blockNum++) {
       blockPromises.push(this.provider.getBlock(blockNum));
     }
     const blocks = await Promise.all(blockPromises);
 
+    const txs: TransactionEntity[] = [];
     for (const block of blocks) {
       // fetch all transactions parallelly
-      const txPromises = [];
+      const txPromises: Array<Promise<null | TransactionResponse>> = [];
       for (const txHash of block!.transactions) {
         txPromises.push(this.provider.getTransaction(txHash));
       }
@@ -49,23 +51,21 @@ export class TxSubscriber {
           blockNumber: rawTx.blockNumber!,
           timestamp: block!.timestamp,
         };
-        this.db.txs.push(tx);
-        console.log(tx);
+        txs.push(new TransactionEntity(tx));
       }
     }
+
+    await this.db.connection.manager.save(txs);
   }
 
-  async syncTxs(currentBlockNumber: number) {
+  async syncTxs(currentBlockNumber: number): Promise<void> {
     // fast-sync
     const toBlock = currentBlockNumber - this.confirmation;
     const fromBlock = this.fromBlock;
     for (let block = fromBlock; block <= toBlock; block += this.fastSyncBatch) {
       const fromBlockPerBatch = block;
       const toBlockPerBatch = Math.min(block + this.fastSyncBatch - 1, toBlock);
-      const totalVolumeInUSD = await this.syncTxsPerBatch(
-        fromBlockPerBatch,
-        toBlockPerBatch,
-      );
+      await this.syncTxsPerBatch(fromBlockPerBatch, toBlockPerBatch);
 
       logger.info(
         `processing logs in range [${fromBlockPerBatch}, ${toBlockPerBatch}]`,
@@ -73,7 +73,7 @@ export class TxSubscriber {
     }
   }
 
-  async start() {
+  async start(): Promise<void> {
     while (true) {
       const currentBlockNumber = await this.provider.getBlockNumber();
       await this.syncTxs(currentBlockNumber);
@@ -82,10 +82,12 @@ export class TxSubscriber {
       }
     }
 
-    this.provider.on("block", async (blockTag) => {
-      if (blockTag >= this.fromBlock + this.confirmation) {
-        await this.syncTxs(blockTag);
-      }
+    await this.provider.on("block", (blockTag) => {
+      void (async () => {
+        if (blockTag >= this.fromBlock + this.confirmation) {
+          await this.syncTxs(blockTag);
+        }
+      })();
     });
   }
 }

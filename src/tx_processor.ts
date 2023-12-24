@@ -1,13 +1,8 @@
-import { Database } from "./database";
-import { ethers } from "ethers";
-import {
-  Transaction,
-  Inscription,
-  Token,
-  Deploy,
-  Transfer,
-  Mint,
-} from "./types";
+import { type Database } from "./database";
+import { BigNumber } from "bignumber.js";
+import { InscriptionEntity, TokenEntity, TransactionEntity } from "./entities";
+import { serializeBalance, deserializeToken, serializeToken } from "./utils";
+import { type Transaction, type Inscription, type Token } from "./types";
 import { logger } from "./logger";
 
 export class TxProcessor {
@@ -16,7 +11,7 @@ export class TxProcessor {
     protected txSizes: number = 20,
   ) {}
 
-  processTx(txs: Transaction[]) {
+  async processTx(txs: Transaction[]): Promise<void> {
     txs.reverse();
     while (txs.length > 0) {
       const tx = txs.pop()!;
@@ -35,24 +30,28 @@ export class TxProcessor {
       // skip commas
       const content = data.slice(index + 1).trimStart();
 
-      if (content[0] == "{") {
+      if (content[0] === "{") {
         const jsonData = JSON.parse(content);
         // protocol type
-        const protocol = jsonData["p"];
-        if (protocol == "asc-20") {
-          const operation = jsonData["op"];
+        const protocol = jsonData.p;
+        if (protocol === "asc-20") {
+          const operation = jsonData.op;
           let valid;
+          if (await this.db.checkInscriptionExistByTxHash(tx.txHash)) {
+            // processed already
+            continue;
+          }
           switch (operation) {
             case "deploy": {
-              valid = this.processDeployOperation(tx, jsonData);
+              valid = await this.processDeployOperation(tx, jsonData);
               break;
             }
             case "mint": {
-              valid = this.processMintOperation(tx, jsonData);
+              valid = await this.processMintOperation(tx, jsonData);
               break;
             }
             case "transfer": {
-              valid = this.processTransferOperation(tx, jsonData);
+              valid = await this.processTransferOperation(tx, jsonData);
               break;
             }
             default: {
@@ -62,7 +61,7 @@ export class TxProcessor {
           const inscription: Inscription = {
             id: this.db.inscriptionNumber,
             txHash: tx.txHash,
-            protocol: jsonData["p"],
+            protocol,
             from: tx.from,
             to: tx.to,
             timestamp: tx.timestamp,
@@ -70,7 +69,9 @@ export class TxProcessor {
             contentType,
             valid,
           };
-          this.db.inscriptions.push(inscription);
+          await this.db.connection.manager.save(
+            new InscriptionEntity(inscription),
+          );
         }
       } else {
         logger.error("parse error, skip it");
@@ -79,78 +80,97 @@ export class TxProcessor {
   }
 
   // data:,{"p":"asc-20","op":"deploy","tick":"avav","max":"1463636349000000","lim":"69696969"}
-  processDeployOperation(tx: Transaction, jsonData: any): boolean {
+  async processDeployOperation(
+    tx: Transaction,
+    jsonData: any,
+  ): Promise<boolean> {
     // check if it is deployed already
-    if (this.db.tokens.hasOwnProperty(jsonData["tick"])) {
+    const tick = jsonData.tick;
+    const exist = await this.db.checkTokenExistByTickName(tick);
+    if (exist) {
       // invalid inscription
       logger.error("deployed already");
       return false;
     }
 
     const token: Token = {
-      tick: jsonData["tick"],
+      tick,
       id: this.db.inscriptionNumber,
-      max: parseInt(jsonData["max"]),
-      limit: parseInt(jsonData["lim"]),
-      minted: 0,
+      max: new BigNumber(jsonData.max),
+      limit: new BigNumber(jsonData.lim),
+      minted: new BigNumber(0),
       holders: 0,
       numTxs: 0,
       createdAt: tx.timestamp,
       completedAt: 0,
     };
 
-    this.db.tokens[token.tick] = token;
+    await this.db.connection.manager.save(serializeToken(token));
     this.db.inscriptionNumber++;
     return true;
   }
 
   // data:,{"p":"asc-20","op":"mint","tick":"dino","amt":"100000000"}
-  processMintOperation(tx: Transaction, jsonData: any): boolean {
-    const tick = jsonData["tick"];
-    const balances = this.db.balances[tx.to] ?? {};
-    if (!this.db.tokens.hasOwnProperty(tick)) {
+  async processMintOperation(tx: Transaction, jsonData: any): Promise<boolean> {
+    const tick = jsonData.tick;
+    const tokenEntity = await this.db.connection.manager.findOne(TokenEntity, {
+      where: { tick },
+    });
+    if (tokenEntity == null) {
       logger.error(`invalid tick ${tick}`);
       return false;
     }
-    const tokenInfo = this.db.tokens[tick];
-    const amt = parseInt(jsonData["amt"]);
-    if (amt > tokenInfo.limit) {
+    const tokenInfo = deserializeToken(tokenEntity);
+    const amt = new BigNumber(jsonData.amt);
+    if (amt.gt(tokenInfo.limit)) {
       logger.error(`mint too many tokens once time`);
       return false;
     }
-    if (amt + tokenInfo.minted > tokenInfo.max) {
-      logger.error(`exceed tokens amount limit`);
+    if (amt.plus(tokenInfo.minted).gt(tokenInfo.max)) {
+      logger.error(
+        `exceed tokens(${
+          tokenInfo.tick
+        }) amount limit: (${amt.toString()}+${tokenInfo.minted.toString()}>${tokenInfo.max.toString()})`,
+      );
       return false;
     }
 
-    if (balances.hasOwnProperty(tick)) {
-      balances[tick] += amt;
-    } else {
+    const balance = await this.db.getTokenBalance(tick, tx.to);
+    if (balance.amount.isZero()) {
       // new holder
-      balances[tick] = amt;
       tokenInfo.holders += 1;
     }
-    // update db
-    this.db.balances[tx.to] = balances;
-    tokenInfo.minted += amt;
+    balance.amount = balance.amount.plus(amt);
+
+    tokenInfo.minted = tokenInfo.minted.plus(amt);
     tokenInfo.numTxs++;
-    if (tokenInfo.minted == tokenInfo.max) {
+    if (tokenInfo.minted.eq(tokenInfo.max)) {
       tokenInfo.completedAt = tx.timestamp;
     }
+
+    // update db
+    await this.db.connection.manager.save(serializeToken(tokenInfo));
+    await this.db.connection.manager.save(serializeBalance(balance));
     return true;
   }
 
   // data:,{"p":"asc-20","op":"transfer","tick":"dino","amt":"100000000"}
-  processTransferOperation(tx: Transaction, jsonData: any): boolean {
+  async processTransferOperation(
+    tx: Transaction,
+    jsonData: any,
+  ): Promise<boolean> {
     // check valid token
-    const tick = jsonData["tick"];
-    if (!this.db.tokens.hasOwnProperty(tick)) {
+    const tick = jsonData.tick;
+    const tokenEntity = await this.db.connection.manager.findOne(TokenEntity, {
+      where: { tick },
+    });
+    if (tokenEntity == null) {
       logger.error(`invalid tick ${tick}`);
       return false;
     }
-    const tokenInfo = this.db.tokens[tick];
-    const amt = parseInt(jsonData["amt"]);
-    if (amt === 0) {
+    const tokenInfo = deserializeToken(tokenEntity);
+    const amt = new BigNumber(jsonData.amt);
+    if (amt.isZero()) {
       logger.warn(`send nothing`);
       return false;
     }
@@ -159,33 +179,42 @@ export class TxProcessor {
       return false;
     }
     // check from
-    const fromBalance = this.db.balances[tx.from] ?? {};
-    const toBalance = this.db.balances[tx.to] ?? {};
-    if (fromBalance[tick] < amt) {
+    const fromBalance = await this.db.getTokenBalance(tick, tx.from);
+    const toBalance = await this.db.getTokenBalance(tick, tx.to);
+
+    if (fromBalance.amount.lt(amt)) {
       logger.error(`exceed from account balance`);
       return false;
     }
     // update db
-    fromBalance[tick] -= amt;
-    if (fromBalance[tick] == 0) {
+    fromBalance.amount = fromBalance.amount.minus(amt);
+    if (fromBalance.amount.isZero()) {
       tokenInfo.holders--;
     }
-    if (toBalance[tick] == 0) {
+    if (toBalance.amount.isZero()) {
       tokenInfo.holders++;
     }
-    toBalance[tick] += amt;
-    // write back to record
-    this.db.balances[tx.from] = fromBalance;
-    this.db.balances[tx.to] = toBalance;
+    toBalance.amount = toBalance.amount.plus(amt);
+    // update db
+    await this.db.connection.manager.save(
+      [fromBalance, toBalance].map(serializeBalance),
+    );
+    await this.db.connection.manager.save(serializeToken(tokenInfo));
     return true;
   }
 
-  start() {
+  start(): void {
     setInterval(() => {
-      // consume all txs from db
-      if (this.db.txs.length >= this.txSizes) {
-        this.processTx(this.db.txs);
-      }
+      void (async () => {
+        // consume all txs from db
+        const count = await this.db.getTxCounts();
+        if (count >= this.txSizes) {
+          const txs = await this.db.connection.manager.find(TransactionEntity);
+          await this.processTx(txs);
+          // sweep all processed txs
+          await this.db.connection.manager.remove(txs);
+        }
+      })();
     }, 5000);
   }
 }
