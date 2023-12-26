@@ -113,9 +113,13 @@ class GlobalStateEntity {
   @Column({ name: "subscribed_block_number" })
   subscribedBlockNumber: number;
 
+  @Column({ name: "inscription_number" })
+  inscriptionNumber: number;
+
   constructor(globalState: {
     proccessedBlockNumber?: number;
     subscribedBlockNumber?: number;
+    inscriptionNumber?: number;
   }) {
     this.id = 0;
     Object.assign(this, globalState);

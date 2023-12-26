@@ -43,6 +43,7 @@ export class TxProcessor {
           const operation = jsonData.op;
           let entities: any[];
           if (await this.db.checkInscriptionExistByTxHash(tx.txHash)) {
+            logger.error("parsed already, skip it");
             // processed already
             continue;
           }
@@ -83,11 +84,14 @@ export class TxProcessor {
               await transactionEntityManager.save(
                 new GlobalStateEntity({
                   proccessedBlockNumber: tx.blockNumber,
+                  inscriptionNumber: this.db.inscriptionNumber,
                 }),
               );
+
+              this.db.inscriptionNumber++;
               // sweep the processed tx
               // TODO(do we need to save it)
-              await transactionEntityManager.remove(tx);
+              await transactionEntityManager.remove(new TransactionEntity(tx));
             },
           );
         }
@@ -107,6 +111,7 @@ export class TxProcessor {
       logger.error("deployed already");
       return [];
     }
+    logger.info(`find new token: ${tick}`);
 
     const token: Token = {
       tick,
@@ -120,7 +125,6 @@ export class TxProcessor {
       completedAt: 0,
     };
 
-    this.db.inscriptionNumber++;
     return [serializeToken(token)];
   }
 

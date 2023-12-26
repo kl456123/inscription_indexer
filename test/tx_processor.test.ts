@@ -13,7 +13,7 @@ describe("tx_processor", () => {
   });
 
   it("basic usage", async () => {
-    await txProcessor.processTx(txs.slice(0, 2));
+    await txProcessor.processTx(txs.slice(0, 3));
     const tick = "bull";
     expect(await database.checkTokenExistByTickName(tick)).to.be.true;
     const balance = await database.getTokenBalance(
@@ -21,5 +21,8 @@ describe("tx_processor", () => {
       "0x32CD96D68aBAD6c4d2A4E45155feE7D233969Ce0",
     );
     expect(balance.amount.toNumber()).gt(0);
+
+    // lili
+    expect(await database.checkTokenExistByTickName("lili")).to.be.true;
   });
 });

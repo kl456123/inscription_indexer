@@ -15,7 +15,7 @@ async function getApp(): Promise<void> {
     serverPort: process.env.SERVER_PORT ?? "3000",
     serverIP: process.env.SERVER_IP ?? "127.0.0.1",
     url: process.env.MAINNET_URL,
-    fastSyncBatch: 100, // blocks size
+    fastSyncBatch: 50, // blocks size
     txSizes: 50, // txs size
     filterTokens: [],
     fromBlock: 38529642,

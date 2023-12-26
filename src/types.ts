@@ -60,6 +60,7 @@ export interface TokenBalance {
 export interface GlobalState {
   proccessedBlockNumber: number;
   subscribedBlockNumber: number;
+  inscriptionNumber: number;
 }
 
 export type Operation = Mint | Deploy | Transfer;

@@ -21,6 +21,8 @@ export class Database {
 
   async connect(): Promise<void> {
     this.connection = await getDBConnectionAsync();
+    const { inscriptionNumber } = await this.getGlobalState();
+    this.inscriptionNumber = inscriptionNumber;
   }
 
   async getTokenBalance(tick: string, address: string): Promise<TokenBalance> {
@@ -80,6 +82,7 @@ export class Database {
         new GlobalStateEntity({
           proccessedBlockNumber: 0,
           subscribedBlockNumber: 0,
+          inscriptionNumber: 0,
         }),
       );
     }
