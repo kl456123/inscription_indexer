@@ -18,13 +18,15 @@ async function getApp(): Promise<void> {
     fastSyncBatch: 20, // blocks size
     txSizes: 10, // txs size
     filterTokens: [],
+    fromBlock: 38529642,
   };
-  const provider = new ethers.JsonRpcProvider(options.url);
-  // const currentBlockNumber = await provider.getBlockNumber();
-  const fromBlock = 38529642;
 
   const db = new Database();
   await db.connect();
+  const { subscribedBlockNumber } = await db.getGlobalState();
+  const provider = new ethers.JsonRpcProvider(options.url);
+  const fromBlock = Math.max(subscribedBlockNumber, options.fromBlock);
+  // const currentBlockNumber = await provider.getBlockNumber();
 
   const router = getAllRouters(db);
   app.use(router.routes());

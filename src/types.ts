@@ -57,4 +57,9 @@ export interface TokenBalance {
   amount: BigNumber;
 }
 
+export interface GlobalState {
+  proccessedBlockNumber: number;
+  subscribedBlockNumber: number;
+}
+
 export type Operation = Mint | Deploy | Transfer;

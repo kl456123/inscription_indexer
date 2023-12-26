@@ -102,9 +102,30 @@ class TokenBalanceEntity {
   amount: string;
 }
 
+@Entity({ name: "global_state" })
+class GlobalStateEntity {
+  @PrimaryColumn({ name: "id" })
+  id: number;
+
+  @Column({ name: "processed_block_number" })
+  proccessedBlockNumber: number;
+
+  @Column({ name: "subscribed_block_number" })
+  subscribedBlockNumber: number;
+
+  constructor(globalState: {
+    proccessedBlockNumber?: number;
+    subscribedBlockNumber?: number;
+  }) {
+    this.id = 0;
+    Object.assign(this, globalState);
+  }
+}
+
 export {
   InscriptionEntity,
   TokenEntity,
   TransactionEntity,
   TokenBalanceEntity,
+  GlobalStateEntity,
 };

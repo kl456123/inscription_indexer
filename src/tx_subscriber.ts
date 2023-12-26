@@ -2,7 +2,7 @@ import { type ethers, type Block, type TransactionResponse } from "ethers";
 import { logger } from "./logger";
 import { type Transaction } from "./types";
 import { type Database } from "./database";
-import { TransactionEntity } from "./entities";
+import { TransactionEntity, GlobalStateEntity } from "./entities";
 
 export class TxSubscriber {
   protected retries: number;
@@ -55,7 +55,14 @@ export class TxSubscriber {
       }
     }
 
-    await this.db.connection.manager.save(txs);
+    await this.db.connection.manager.transaction(
+      async (transactionEntityManager) => {
+        await transactionEntityManager.save(txs);
+        await transactionEntityManager.save(
+          new GlobalStateEntity({ subscribedBlockNumber: toBlock }),
+        );
+      },
+    );
   }
 
   async syncTxs(currentBlockNumber: number): Promise<void> {

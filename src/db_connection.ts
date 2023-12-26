@@ -9,6 +9,7 @@ import {
   TokenEntity,
   InscriptionEntity,
   TokenBalanceEntity,
+  GlobalStateEntity,
 } from "./entities";
 
 // import * as config from './ormconfig';
@@ -33,6 +34,7 @@ export async function getDBConnectionAsync(): Promise<Connection> {
         TokenEntity,
         InscriptionEntity,
         TokenBalanceEntity,
+        GlobalStateEntity,
       ],
       migrations: [],
       subscribers: [],

@@ -1,4 +1,4 @@
-import { type Token, type TokenBalance } from "./types";
+import { type Token, type TokenBalance, type GlobalState } from "./types";
 import { type Connection } from "typeorm";
 import { BigNumber } from "bignumber.js";
 import { getDBConnectionAsync } from "./db_connection";
@@ -7,6 +7,7 @@ import {
   TokenBalanceEntity,
   InscriptionEntity,
   TransactionEntity,
+  GlobalStateEntity,
 } from "../src/entities";
 import { deserializeBalance, deserializeToken } from "../src/utils";
 
@@ -71,5 +72,34 @@ export class Database {
     return txs;
   }
 
-  // async saveEntity() {}
+  async getGlobalState(): Promise<GlobalState> {
+    const globalStateEntity =
+      await this.connection.manager.find(GlobalStateEntity);
+    if (globalStateEntity.length === 0) {
+      return await this.connection.manager.save(
+        new GlobalStateEntity({
+          proccessedBlockNumber: 0,
+          subscribedBlockNumber: 0,
+        }),
+      );
+    }
+    if (globalStateEntity.length > 1) {
+      throw new Error(`no global state exists`);
+    }
+    return globalStateEntity[0];
+  }
+
+  async updateProcessedBlockNumber(blockNumber: number): Promise<void> {
+    await this.connection.manager.save({
+      id: 0,
+      proccessedBlockNumber: blockNumber,
+    });
+  }
+
+  async updateSubscribedBlockNumber(blockNumber: number): Promise<void> {
+    await this.connection.manager.save({
+      id: 0,
+      subscribedBlockNumber: blockNumber,
+    });
+  }
 }
