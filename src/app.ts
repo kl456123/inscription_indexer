@@ -18,10 +18,16 @@ async function getApp(): Promise<void> {
     serverPort: process.env.SERVER_PORT ?? "3000",
     serverIP: process.env.SERVER_IP ?? "127.0.0.1",
     url: process.env.MAINNET_URL,
-    fastSyncBatch: 10, // blocks size
+    fastSyncBatch:
+      process.env.BATCH_SIZE !== undefined
+        ? parseInt(process.env.BATCH_SIZE)
+        : 10, // blocks size
     txSizes: 10, // txs size
     filterTokens: [],
-    fromBlock: 18869605 - 1000,
+    fromBlock:
+      process.env.FROM_BLOCK !== undefined
+        ? parseInt(process.env.FROM_BLOCK)
+        : null,
   };
 
   const provider = new ethers.JsonRpcProvider(options.url);
@@ -37,9 +43,8 @@ async function getApp(): Promise<void> {
   await db.connect(dbOption);
   const { subscribedBlockNumber } = await db.getGlobalState();
   const currentBlockNumber = await provider.getBlockNumber();
-  console.log(currentBlockNumber);
   const fromBlock = Math.min(
-    Math.max(subscribedBlockNumber, options.fromBlock),
+    Math.max(subscribedBlockNumber, options.fromBlock ?? currentBlockNumber),
     currentBlockNumber,
   );
 
