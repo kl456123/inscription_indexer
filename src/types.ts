@@ -64,3 +64,10 @@ export interface GlobalState {
 }
 
 export type Operation = Mint | Deploy | Transfer;
+
+export interface DBOption {
+  dbHost: string;
+  dbName: string;
+  dbUsername: string;
+  dbPasswd: string;
+}

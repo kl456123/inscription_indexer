@@ -1,4 +1,9 @@
-import { type Token, type TokenBalance, type GlobalState } from "./types";
+import {
+  type Token,
+  type TokenBalance,
+  type GlobalState,
+  type DBOption,
+} from "./types";
 import { type Connection } from "typeorm";
 import { BigNumber } from "bignumber.js";
 import { getDBConnectionAsync } from "./db_connection";
@@ -19,8 +24,8 @@ export class Database {
     this.inscriptionNumber = 0;
   }
 
-  async connect(): Promise<void> {
-    this.connection = await getDBConnectionAsync();
+  async connect(dbOption: DBOption): Promise<void> {
+    this.connection = await getDBConnectionAsync(dbOption);
     const { inscriptionNumber } = await this.getGlobalState();
     this.inscriptionNumber = inscriptionNumber;
   }

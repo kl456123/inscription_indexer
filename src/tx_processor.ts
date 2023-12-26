@@ -24,7 +24,9 @@ export class TxProcessor {
       const data = Buffer.from(tx.data.slice(2), "hex").toString();
       const index = data.indexOf(",");
       if (index === -1) {
-        logger.error("parse error, skip it");
+        logger.error(
+          `parse inscription in txHash(${tx.txHash}) error, skip it`,
+        );
         continue;
       }
       // parse content type
@@ -96,7 +98,9 @@ export class TxProcessor {
           );
         }
       } else {
-        logger.error("parse error, skip it");
+        logger.error(
+          `parse inscription in txHash(${tx.txHash}) error, skip it`,
+        );
       }
     }
   }

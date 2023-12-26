@@ -11,22 +11,25 @@ import {
   TokenBalanceEntity,
   GlobalStateEntity,
 } from "./entities";
+import { type DBOption } from "./types";
 
 // import * as config from './ormconfig';
 
 let connection: Connection;
 
-export async function getDBConnectionAsync(): Promise<Connection> {
+export async function getDBConnectionAsync(
+  dbOption: DBOption,
+): Promise<Connection> {
   if (connection == null) {
     // connection = await createConnection(config as any as ConnectionOptions);
 
     connection = new DataSource({
       type: "postgres",
-      host: "localhost",
+      host: dbOption.dbHost,
       port: 5432,
-      username: "test",
-      password: "test",
-      database: "test",
+      username: dbOption.dbUsername,
+      password: dbOption.dbPasswd,
+      database: dbOption.dbName,
       synchronize: true,
       logging: false,
       entities: [
