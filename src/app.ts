@@ -15,8 +15,8 @@ async function getApp(): Promise<void> {
     serverPort: process.env.SERVER_PORT ?? "3000",
     serverIP: process.env.SERVER_IP ?? "127.0.0.1",
     url: process.env.MAINNET_URL,
-    fastSyncBatch: 20, // blocks size
-    txSizes: 10, // txs size
+    fastSyncBatch: 100, // blocks size
+    txSizes: 50, // txs size
     filterTokens: [],
     fromBlock: 38529642,
   };
@@ -31,6 +31,7 @@ async function getApp(): Promise<void> {
   const router = getAllRouters(db);
   app.use(router.routes());
   app.listen(parseInt(options.serverPort), options.serverIP);
+  logger.info(`start work from blockNumber: ${fromBlock}`);
 
   // fetch txs and save to db
   const txSubscriber = new TxSubscriber(

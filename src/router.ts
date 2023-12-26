@@ -1,5 +1,6 @@
 import Router from "@koa/router";
 import { type Database } from "./database";
+import { logger } from "./logger";
 import { TokenBalanceEntity } from "./entities";
 
 export function getAllRouters(db: Database): Router {
@@ -8,6 +9,7 @@ export function getAllRouters(db: Database): Router {
     ctx.body = "inscription server";
   });
   router.get("/tokenBalance", async (ctx) => {
+    logger.info(ctx.query);
     const tick = ctx.query.tick as string;
     const address = ctx.query.address as string;
     const balance = await db.getTokenBalance(tick, address);
@@ -18,6 +20,7 @@ export function getAllRouters(db: Database): Router {
     };
   });
   router.get("/allTokensBalance", async (ctx) => {
+    logger.info(ctx.query);
     const address = ctx.query.address as string;
     const balances = await db.connection.manager.find(TokenBalanceEntity, {
       where: { address },
@@ -28,6 +31,7 @@ export function getAllRouters(db: Database): Router {
     };
   });
   router.get("/tokenInfo", async (ctx) => {
+    logger.info(ctx.query);
     const tick = ctx.query.tick as string;
     const tokenInfo = await db.getTokenInfo(tick);
     ctx.body = {
