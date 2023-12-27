@@ -9,9 +9,8 @@ export class TxSubscriber {
   constructor(
     protected provider: ethers.JsonRpcProvider,
     protected db: Database,
-    protected fromBlock: number,
     protected fastSyncBatch: number = 20,
-    protected confirmation: number = 2,
+    protected confirmation: number = 5,
   ) {
     this.retries = 2;
   }
@@ -19,23 +18,31 @@ export class TxSubscriber {
   async syncTxsPerBatch(fromBlock: number, toBlock: number): Promise<void> {
     // fetch blocks from the chain parallelly
     const blockPromises: Array<Promise<null | Block>> = [];
-    for (let blockNum = fromBlock; blockNum <= toBlock; blockNum++) {
+    for (let blockNum = fromBlock; blockNum < toBlock; blockNum++) {
       blockPromises.push(this.provider.getBlock(blockNum));
     }
     const blocks = await Promise.all(blockPromises);
 
     const txs: TransactionEntity[] = [];
     for (const block of blocks) {
+      if (block === null) {
+        logger.info(`get empty block, maybe too fast to sync`);
+        break;
+      }
       // fetch all transactions parallelly
       const txPromises: Array<Promise<null | TransactionResponse>> = [];
-      for (const txHash of block!.transactions) {
+      for (const txHash of block.transactions) {
         txPromises.push(this.provider.getTransaction(txHash));
       }
       const rawTxs = await Promise.all(txPromises);
 
       for (let i = 0; i < rawTxs.length; ++i) {
-        const rawTx = rawTxs[i]!;
-        // filter valid inscriptions from block
+        const rawTx = rawTxs[i];
+        if (rawTx === null) {
+          logger.info(`get empty tx, skip it`);
+          continue;
+        }
+        // only filter txs containing valid inscriptions from block
         // NOTE(ascii("data:")==0x646174613a)
         if (
           rawTx.data.length < 12 ||
@@ -44,12 +51,12 @@ export class TxSubscriber {
           continue;
         }
         const tx: Transaction = {
-          txHash: block!.transactions[i],
+          txHash: block.transactions[i],
           data: rawTx.data,
           from: rawTx.from,
           to: rawTx.to!,
           blockNumber: rawTx.blockNumber!,
-          timestamp: block!.timestamp,
+          timestamp: block.timestamp,
         };
         txs.push(new TransactionEntity(tx));
       }
@@ -65,36 +72,42 @@ export class TxSubscriber {
     );
   }
 
-  async syncTxs(currentBlockNumber: number): Promise<void> {
+  async syncTxs(fromBlock: number, toBlock: number): Promise<void> {
     // fast-sync
-    const toBlock = currentBlockNumber - this.confirmation;
-    const fromBlock = this.fromBlock;
-    for (let block = fromBlock; block <= toBlock; block += this.fastSyncBatch) {
+    for (let block = fromBlock; block < toBlock; block += this.fastSyncBatch) {
       const fromBlockPerBatch = block;
-      const toBlockPerBatch = Math.min(block + this.fastSyncBatch - 1, toBlock);
+      const toBlockPerBatch = Math.min(block + this.fastSyncBatch, toBlock);
       await this.syncTxsPerBatch(fromBlockPerBatch, toBlockPerBatch);
 
       logger.info(
-        `processing logs in range [${fromBlockPerBatch}, ${toBlockPerBatch}]`,
+        `processing logs in range [${fromBlockPerBatch}, ${toBlockPerBatch})`,
       );
     }
   }
 
-  async start(): Promise<void> {
+  async start(fromBlock: number): Promise<void> {
+    // fast sync to the latest block first
+    let syncBlock = fromBlock;
     while (true) {
       const currentBlockNumber = await this.provider.getBlockNumber();
-      await this.syncTxs(currentBlockNumber);
-      if (currentBlockNumber - this.fromBlock < this.confirmation) {
+      const nextSyncBlock = currentBlockNumber - this.confirmation + 1;
+      if (nextSyncBlock <= syncBlock) {
         break;
       }
+      await this.syncTxs(syncBlock, nextSyncBlock);
+      syncBlock = nextSyncBlock;
     }
+    logger.info("sync finished");
 
-    await this.provider.on("block", (blockTag) => {
+    // subscribe every confirmed block
+    setInterval(() => {
       void (async () => {
-        if (blockTag >= this.fromBlock + this.confirmation) {
-          await this.syncTxs(blockTag);
-        }
+        const blockTag = await this.provider.getBlockNumber();
+        const nextSyncBlock = blockTag - this.confirmation + 1;
+        if (nextSyncBlock <= syncBlock) return;
+        await this.syncTxs(syncBlock, nextSyncBlock);
+        syncBlock = nextSyncBlock;
       })();
-    });
+    }, 5000);
   }
 }

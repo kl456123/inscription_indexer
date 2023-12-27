@@ -54,13 +54,8 @@ async function getApp(): Promise<void> {
   logger.info(`start work from blockNumber: ${fromBlock}`);
 
   // fetch txs and save to db
-  const txSubscriber = new TxSubscriber(
-    provider,
-    db,
-    fromBlock,
-    options.fastSyncBatch,
-  );
-  txSubscriber.start().catch((error) => {
+  const txSubscriber = new TxSubscriber(provider, db, options.fastSyncBatch);
+  txSubscriber.start(fromBlock).catch((error) => {
     logger.error(error);
   });
 
