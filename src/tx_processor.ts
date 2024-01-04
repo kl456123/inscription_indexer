@@ -28,6 +28,7 @@ export class TxProcessor {
         logger.debug(
           `parse inscription in txHash(${tx.txHash}) error, skip it`,
         );
+        await this.db.removeTransaction(tx);
         continue;
       }
       // parse content type
@@ -47,6 +48,7 @@ export class TxProcessor {
           if (await this.db.checkInscriptionExistByTxHash(tx.txHash)) {
             logger.debug("parsed already, skip it");
             // processed already
+            await this.db.removeTransaction(tx);
             continue;
           }
           switch (operation) {
@@ -96,11 +98,19 @@ export class TxProcessor {
               await transactionEntityManager.remove(new TransactionEntity(tx));
             },
           );
+        } else {
+          logger.debug(
+            `parse unknown protocol ${protocol} in txHash(${tx.txHash}) error, skip it`,
+          );
+          await this.db.removeTransaction(tx);
         }
       } catch {
         logger.debug(
           `parse ${content} inscription in txHash(${tx.txHash}) error, skip it`,
         );
+
+        // remove invalid tx
+        await this.db.removeTransaction(tx);
       }
     }
   }
@@ -231,7 +241,7 @@ export class TxProcessor {
         logger.info(`start processing ${count} txs`);
         for (let i = 0; i < count; i += this.txSizes) {
           const txs = await this.db.connection.manager.find(TransactionEntity, {
-            take: this.txSizes,
+            take: Math.min(this.txSizes, count - i),
           });
           await this.processTx(txs);
         }

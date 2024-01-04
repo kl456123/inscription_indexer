@@ -3,6 +3,7 @@ import {
   type TokenBalance,
   type GlobalState,
   type DBOption,
+  type Transaction,
 } from "./types";
 import { type Connection } from "typeorm";
 import { BigNumber } from "bignumber.js";
@@ -109,5 +110,9 @@ export class Database {
       id: 0,
       subscribedBlockNumber: blockNumber,
     });
+  }
+
+  async removeTransaction(tx: Transaction): Promise<void> {
+    await this.connection.manager.remove(new TransactionEntity(tx));
   }
 }
