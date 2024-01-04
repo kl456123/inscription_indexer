@@ -22,7 +22,7 @@ async function getApp(): Promise<void> {
       process.env.BATCH_SIZE !== undefined
         ? parseInt(process.env.BATCH_SIZE)
         : 10, // blocks size
-    txSizes: 10, // txs size
+    txSizes: 200, // txs size
     filterTokens: [],
     fromBlock:
       process.env.FROM_BLOCK !== undefined

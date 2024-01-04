@@ -1,5 +1,6 @@
 import { type Database } from "./database";
 import { BigNumber } from "bignumber.js";
+import { setIntervalAsync } from "set-interval-async";
 import {
   InscriptionEntity,
   TokenEntity,
@@ -24,7 +25,7 @@ export class TxProcessor {
       const data = Buffer.from(tx.data.slice(2), "hex").toString();
       const index = data.indexOf(",");
       if (index === -1) {
-        logger.error(
+        logger.debug(
           `parse inscription in txHash(${tx.txHash}) error, skip it`,
         );
         continue;
@@ -36,8 +37,7 @@ export class TxProcessor {
       }
       // skip commas
       const content = data.slice(index + 1).trimStart();
-
-      if (content[0] === "{") {
+      try {
         const jsonData = JSON.parse(content);
         // protocol type
         const protocol = jsonData.p;
@@ -45,7 +45,7 @@ export class TxProcessor {
           const operation = jsonData.op;
           let entities: any[];
           if (await this.db.checkInscriptionExistByTxHash(tx.txHash)) {
-            logger.error("parsed already, skip it");
+            logger.debug("parsed already, skip it");
             // processed already
             continue;
           }
@@ -97,9 +97,9 @@ export class TxProcessor {
             },
           );
         }
-      } else {
-        logger.error(
-          `parse inscription in txHash(${tx.txHash}) error, skip it`,
+      } catch {
+        logger.debug(
+          `parse ${content} inscription in txHash(${tx.txHash}) error, skip it`,
         );
       }
     }
@@ -139,17 +139,17 @@ export class TxProcessor {
       where: { tick },
     });
     if (tokenEntity == null) {
-      logger.error(`invalid tick ${tick}`);
+      logger.debug(`invalid tick ${tick}`);
       return [];
     }
     const tokenInfo = deserializeToken(tokenEntity);
     const amt = new BigNumber(jsonData.amt);
     if (amt.gt(tokenInfo.limit)) {
-      logger.error(`mint too many tokens once time`);
+      logger.debug(`mint too many tokens once time`);
       return [];
     }
     if (amt.plus(tokenInfo.minted).gt(tokenInfo.max)) {
-      logger.error(
+      logger.debug(
         `exceed tokens(${
           tokenInfo.tick
         }) amount limit: (${amt.toString()}+${tokenInfo.minted.toString()}>${tokenInfo.max.toString()})`,
@@ -185,7 +185,7 @@ export class TxProcessor {
       where: { tick },
     });
     if (tokenEntity == null) {
-      logger.error(`invalid tick ${tick}`);
+      logger.debug(`invalid tick ${tick}`);
       return [];
     }
     const tokenInfo = deserializeToken(tokenEntity);
@@ -203,7 +203,7 @@ export class TxProcessor {
     const toBalance = await this.db.getTokenBalance(tick, tx.to);
 
     if (fromBalance.amount.lt(amt)) {
-      logger.error(`exceed from account balance`);
+      logger.debug(`exceed from account balance`);
       return [];
     }
     // update db
@@ -224,19 +224,19 @@ export class TxProcessor {
   }
 
   start(): void {
-    setInterval(() => {
-      void (async () => {
-        // consume all txs from db
-        const count = await this.db.getTxCounts();
-        if (count >= this.txSizes) {
-          logger.info(`start processing ${count} txs`);
+    setIntervalAsync(async () => {
+      // consume all txs from db
+      const count = await this.db.getTxCounts();
+      if (count > this.txSizes) {
+        logger.info(`start processing ${count} txs`);
+        for (let i = 0; i < count; i += this.txSizes) {
           const txs = await this.db.connection.manager.find(TransactionEntity, {
-            take: count,
+            take: this.txSizes,
           });
           await this.processTx(txs);
-          logger.info(`${count} txs processed`);
         }
-      })();
+        logger.info(`${count} txs processed`);
+      }
     }, 5000);
   }
 }

@@ -1,6 +1,7 @@
 import { type ethers, type Block, type TransactionResponse } from "ethers";
 import { logger } from "./logger";
 import { type Transaction } from "./types";
+import { setIntervalAsync } from "set-interval-async";
 import { type Database } from "./database";
 import { TransactionEntity, GlobalStateEntity } from "./entities";
 
@@ -80,7 +81,7 @@ export class TxSubscriber {
       await this.syncTxsPerBatch(fromBlockPerBatch, toBlockPerBatch);
 
       logger.info(
-        `processing logs in range [${fromBlockPerBatch}, ${toBlockPerBatch})`,
+        `processing blocks in range [${fromBlockPerBatch}, ${toBlockPerBatch})`,
       );
     }
   }
@@ -100,14 +101,12 @@ export class TxSubscriber {
     logger.info("sync finished");
 
     // subscribe every confirmed block
-    setInterval(() => {
-      void (async () => {
-        const blockTag = await this.provider.getBlockNumber();
-        const nextSyncBlock = blockTag - this.confirmation + 1;
-        if (nextSyncBlock <= syncBlock) return;
-        await this.syncTxs(syncBlock, nextSyncBlock);
-        syncBlock = nextSyncBlock;
-      })();
+    setIntervalAsync(async () => {
+      const blockTag = await this.provider.getBlockNumber();
+      const nextSyncBlock = blockTag - this.confirmation + 1;
+      if (nextSyncBlock <= syncBlock) return;
+      await this.syncTxs(syncBlock, nextSyncBlock);
+      syncBlock = nextSyncBlock;
     }, 5000);
   }
 }
