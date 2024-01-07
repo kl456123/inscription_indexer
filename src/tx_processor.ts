@@ -79,6 +79,7 @@ export class TxProcessor {
             contentType,
             valid: entities.length !== 0,
           };
+          this.db.inscriptionNumber++;
           await this.db.connection.manager.transaction(
             async (transactionEntityManager) => {
               await transactionEntityManager.save(
@@ -92,7 +93,6 @@ export class TxProcessor {
                 }),
               );
 
-              this.db.inscriptionNumber++;
               // sweep the processed tx
               // TODO(do we need to save it)
               await transactionEntityManager.remove(new TransactionEntity(tx));
