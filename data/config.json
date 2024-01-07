@@ -1,0 +1,8 @@
+{
+  "serverPort": "3000",
+  "serverIP": "127.0.0.1",
+  "fastSyncBatch": 16,
+  "txSizes": 200,
+  "filterTokens": [],
+  "fromBlock": 37914497
+}

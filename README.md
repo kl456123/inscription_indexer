@@ -11,7 +11,11 @@ cp .env.example .env
 yarn && yarn start
 
 # start postgres
-docker run --name postgresql -p 5432:5432 -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test --rm -d postgres
+docker run --name postgresql -p 5432:5432 -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -d postgres
+
+# create db for each chain if run first
+psql postgres://test:test@localhost
+> CREATE DATABASE avax; CREATE DATABASE polygon;
 
 # fetch info from server
 yarn client

@@ -61,7 +61,7 @@ class InscriptionEntity {
   @PrimaryColumn({ name: "id" })
   id: number;
 
-  @PrimaryColumn({ name: "txHash" })
+  @Column({ name: "txHash" })
   txHash: string;
 
   @Column({ name: "protocol" })

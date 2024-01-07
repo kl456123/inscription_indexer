@@ -8,6 +8,7 @@ import { Database } from "./database";
 import { logger } from "./logger";
 import { dbNames } from "./constants";
 import { type DBOption } from "./types";
+import optionsJson from "../data/config.json";
 
 dotenv.config();
 
@@ -15,19 +16,8 @@ async function getApp(): Promise<void> {
   const app = new Koa();
   // TODO(move to config json file)
   const options = {
-    serverPort: process.env.SERVER_PORT ?? "3000",
-    serverIP: process.env.SERVER_IP ?? "127.0.0.1",
     url: process.env.MAINNET_URL,
-    fastSyncBatch:
-      process.env.BATCH_SIZE !== undefined
-        ? parseInt(process.env.BATCH_SIZE)
-        : 10, // blocks size
-    txSizes: 200, // txs size
-    filterTokens: [],
-    fromBlock:
-      process.env.FROM_BLOCK !== undefined
-        ? parseInt(process.env.FROM_BLOCK)
-        : null,
+    ...optionsJson,
   };
 
   const provider = new ethers.JsonRpcProvider(options.url);
