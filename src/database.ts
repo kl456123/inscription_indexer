@@ -59,6 +59,12 @@ export class Database {
     return tokenInfo;
   }
 
+  async getAllTokensInfo(): Promise<Token[]> {
+    const tokenEntities = await this.connection.manager.find(TokenEntity);
+    const tokenInfos = tokenEntities.map(deserializeToken);
+    return tokenInfos;
+  }
+
   async checkInscriptionExistByTxHash(txHash: string): Promise<boolean> {
     return this.connection.manager.exists(InscriptionEntity, {
       where: { txHash },

@@ -30,6 +30,14 @@ export function getAllRouters(db: Database): Router {
       balances,
     };
   });
+  router.get("/allTokensInfo", async (ctx) => {
+    logger.info(ctx.query);
+    const tokensInfo = await db.getAllTokensInfo();
+    ctx.body = {
+      tokensInfo,
+    };
+  });
+
   router.get("/tokenInfo", async (ctx) => {
     logger.info(ctx.query);
     const tick = ctx.query.tick as string;

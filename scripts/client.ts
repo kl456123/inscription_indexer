@@ -13,18 +13,35 @@ async function requestAllTokensBalance(query: {
   return requestGet(query, "/allTokensBalance");
 }
 
+async function requestTokenBalance(query: {
+  address: string;
+  tick: string;
+}): Promise<any> {
+  return requestGet(query, "/tokenBalance");
+}
+
 async function requestTokenInfo(query: { tick: string }): Promise<any> {
   return requestGet(query, "/tokenInfo");
 }
 
+async function requestAllTokensInfo(): Promise<any> {
+  return requestGet({}, "/allTokensInfo");
+}
+
 async function main(): Promise<void> {
-  const tick = "bull";
+  const allTokensInfo = await requestAllTokensInfo();
+  console.log(allTokensInfo);
+  const tick = "avas";
+  const address = "0x0D1B983bb5839F36dee794f3572848b5542BfaCC";
+
   const tokenInfo = await requestTokenInfo({ tick });
   console.log(tokenInfo);
   // account
-  const address = "0xf270C8C54fF2733f4126bc5ebCC527669a647dCA";
   const tokensBalance = await requestAllTokensBalance({ address });
   console.log(tokensBalance);
+
+  const tokenBalance = await requestTokenBalance({ address, tick });
+  console.log(tokenBalance);
 }
 
 main()
