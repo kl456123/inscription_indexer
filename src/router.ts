@@ -1,8 +1,6 @@
 import Router from "@koa/router";
 import { type Database } from "./database";
 import { validateNetworkName } from "./middleware/network_validation";
-import { logger } from "./logger";
-import { TokenBalanceEntity } from "./entities";
 import { paginationUtils } from "./utils";
 
 export function getAllRouters(databases: Record<string, Database>): Router {
@@ -11,62 +9,35 @@ export function getAllRouters(databases: Record<string, Database>): Router {
     ctx.body = "inscription server for most evm chain";
   });
 
-  router.get("/tokenBalance", async (ctx) => {
-    logger.info(ctx.query);
-    const tick = ctx.query.tick as string;
-    const address = ctx.query.address as string;
-    validateNetworkName(ctx.query.network, databases);
-    const db = databases[ctx.query.network as string];
-    const balance = await db.getTokenBalance(tick, address);
-    ctx.body = {
-      address,
-      tick,
-      balance,
-    };
-  });
-
   router.get("/supportedNetworks", async (ctx) => {
-    logger.info(ctx.query);
     const networks = Object.keys(databases);
     ctx.body = {
       networks,
     };
   });
 
-  router.get("/allTokensBalance", async (ctx) => {
-    logger.info(ctx.query);
-    const address = ctx.query.address as string;
+  router.get("/holdersInfo", async (ctx) => {
     validateNetworkName(ctx.query.network, databases);
+    const address = ctx.query.address as string;
+    const tick = ctx.query.tick as string;
+    const { page, perPage } = paginationUtils.parsePaginationConfig(ctx);
     const db = databases[ctx.query.network as string];
-    const balances = await db.connection.manager.find(TokenBalanceEntity, {
-      where: { address },
-    });
+    const holders = await db.getHoldersInfo(page, perPage, { tick, address });
     ctx.body = {
-      address,
-      balances,
+      holders,
     };
   });
 
-  router.get("/allTokensInfo", async (ctx) => {
-    logger.info(ctx.query);
+  router.get("/tokensInfo", async (ctx) => {
     validateNetworkName(ctx.query.network, databases);
+    const tick = ctx.query.tick as string;
     const { page, perPage } = paginationUtils.parsePaginationConfig(ctx);
     const db = databases[ctx.query.network as string];
-    const tokensInfo = await db.getAllTokensInfo(page, perPage);
+    const tokensInfo = await db.getTokensInfo(page, perPage, { tick });
     ctx.body = {
       tokensInfo,
     };
   });
 
-  router.get("/tokenInfo", async (ctx) => {
-    logger.info(ctx.query);
-    const tick = ctx.query.tick as string;
-    validateNetworkName(ctx.query.network, databases);
-    const db = databases[ctx.query.network as string];
-    const tokenInfo = await db.getTokenInfo(tick);
-    ctx.body = {
-      tokenInfo,
-    };
-  });
   return router;
 }

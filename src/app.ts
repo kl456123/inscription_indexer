@@ -8,6 +8,7 @@ import { TxProcessor } from "./tx_processor";
 import { Database } from "./database";
 import { logger } from "./logger";
 import { dbNames } from "./constants";
+import KoaLogger from 'koa-logger';
 import { type DBOption } from "./types";
 import optionsJson from "../data/config.json";
 import * as _ from "lodash";
@@ -82,6 +83,7 @@ async function getApp(): Promise<void> {
   const app = new Koa();
   const { databases } = await startJobsForMultichain();
   app.use(cors());
+  app.use(KoaLogger());
   app.use(errorHandler);
   const router = getAllRouters(databases);
   app.use(router.routes());

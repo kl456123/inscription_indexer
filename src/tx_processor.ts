@@ -167,7 +167,7 @@ export class TxProcessor {
       return [];
     }
 
-    const balance = await this.db.getTokenBalance(tick, tx.to);
+    const balance = await this.db.getHolderInfo({ tick, address: tx.to });
     if (balance.amount.isZero()) {
       // new holder
       tokenInfo.holders += 1;
@@ -209,8 +209,8 @@ export class TxProcessor {
       return [];
     }
     // check from
-    const fromBalance = await this.db.getTokenBalance(tick, tx.from);
-    const toBalance = await this.db.getTokenBalance(tick, tx.to);
+    const fromBalance = await this.db.getHolderInfo({ tick, address: tx.from });
+    const toBalance = await this.db.getHolderInfo({ tick, address: tx.to });
 
     if (fromBalance.amount.lt(amt)) {
       logger.debug(`exceed from account balance`);

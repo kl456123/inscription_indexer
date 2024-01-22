@@ -6,7 +6,6 @@ import {
   type Transaction,
 } from "./types";
 import { type Connection } from "typeorm";
-import { BigNumber } from "bignumber.js";
 import { getDBConnectionAsync } from "./db_connection";
 import {
   TokenEntity,
@@ -32,36 +31,39 @@ export class Database {
     this.inscriptionNumber = inscriptionNumber;
   }
 
-  async getTokenBalance(tick: string, address: string): Promise<TokenBalance> {
-    const balanceEntity = await this.connection.manager.findOne(
+  async getHoldersInfo(
+    page: number,
+    perPage: number,
+    filter?: Partial<{ tick: string; address: string }>,
+  ): Promise<TokenBalance[]> {
+    const holdersEntites = await this.connection.manager.find(
       TokenBalanceEntity,
       {
-        where: {
-          tick,
-          address,
-        },
+        where: filter,
+        ...paginationUtils.paginateDBFilters(page, perPage),
       },
     );
-    const balance =
-      balanceEntity !== null
-        ? deserializeBalance(balanceEntity)
-        : { tick, address, amount: new BigNumber(0) };
-    return balance;
+    const holdersInfo = holdersEntites.map(deserializeBalance);
+    return holdersInfo;
   }
 
-  async getTokenInfo(tick: string): Promise<Token> {
-    const tokenEntity = await this.connection.manager.findOne(TokenEntity, {
-      where: { tick },
-    });
-    if (tokenEntity == null) {
-      throw new Error("cannot find token");
+  async getHolderInfo(
+    filter?: Partial<{ tick: string; address: string }>,
+  ): Promise<TokenBalance> {
+    const holdersInfo = await this.getHoldersInfo(1, 1, filter);
+    if (holdersInfo.length === 0) {
+      throw new Error(`invalid holder or tick`);
     }
-    const tokenInfo = deserializeToken(tokenEntity);
-    return tokenInfo;
+    return holdersInfo[0];
   }
 
-  async getAllTokensInfo(page: number, perPage: number): Promise<Token[]> {
+  async getTokensInfo(
+    page: number,
+    perPage: number,
+    filter?: Partial<{ tick: string }>,
+  ): Promise<Token[]> {
     const tokenEntities = await this.connection.manager.find(TokenEntity, {
+      where: filter,
       ...paginationUtils.paginateDBFilters(page, perPage),
     });
     const tokenInfos = tokenEntities.map(deserializeToken);
@@ -102,7 +104,7 @@ export class Database {
       );
     }
     if (globalStateEntity.length > 1) {
-      throw new Error(`no global state exists`);
+      throw new Error(`multiple global states exist`);
     }
     return globalStateEntity[0];
   }

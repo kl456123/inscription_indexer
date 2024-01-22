@@ -88,9 +88,31 @@ export const paginationUtils = {
       ctx.query.perPage === undefined
         ? DEFAULT_PER_PAGE
         : Number(ctx.query.perPage);
-    if (perPage > MAX_PER_PAGE) {
-      throw new Error(`perPage should be less or equal to ${MAX_PER_PAGE}`);
-    }
+    requireCond(
+      perPage <= MAX_PER_PAGE,
+      `perPage should be less or equal to ${MAX_PER_PAGE}`,
+    );
     return { page, perPage };
   },
 };
+
+export class APIError extends Error {
+  constructor(
+    msg: string,
+    readonly code?: number,
+    readonly data: any = undefined,
+  ) {
+    super(msg);
+  }
+}
+
+export function requireCond(
+  cond: boolean,
+  msg: string,
+  code?: number,
+  data: any = undefined,
+): void {
+  if (!cond) {
+    throw new APIError(msg, code, data);
+  }
+}
