@@ -15,15 +15,13 @@ import { type DBOption } from "./types";
 
 // import * as config from './ormconfig';
 
-let connection: Connection;
+const connectionPools: Record<string, Connection> = {};
 
 export async function getDBConnectionAsync(
   dbOption: DBOption,
 ): Promise<Connection> {
-  if (connection == null) {
-    // connection = await createConnection(config as any as ConnectionOptions);
-
-    connection = new DataSource({
+  if (connectionPools[dbOption.dbName] == null) {
+    connectionPools[dbOption.dbName] = new DataSource({
       type: "postgres",
       host: dbOption.dbHost,
       port: 5432,
@@ -43,6 +41,9 @@ export async function getDBConnectionAsync(
       subscribers: [],
     });
   }
-  await connection.initialize();
+  const connection = connectionPools[dbOption.dbName];
+  if (!connection.isInitialized) {
+    await connection.initialize();
+  }
   return connection;
 }

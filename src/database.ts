@@ -16,6 +16,7 @@ import {
   GlobalStateEntity,
 } from "../src/entities";
 import { deserializeBalance, deserializeToken } from "../src/utils";
+import { paginationUtils } from "./utils";
 
 export class Database {
   public inscriptionNumber: number;
@@ -59,8 +60,10 @@ export class Database {
     return tokenInfo;
   }
 
-  async getAllTokensInfo(): Promise<Token[]> {
-    const tokenEntities = await this.connection.manager.find(TokenEntity);
+  async getAllTokensInfo(page: number, perPage: number): Promise<Token[]> {
+    const tokenEntities = await this.connection.manager.find(TokenEntity, {
+      ...paginationUtils.paginateDBFilters(page, perPage),
+    });
     const tokenInfos = tokenEntities.map(deserializeToken);
     return tokenInfos;
   }

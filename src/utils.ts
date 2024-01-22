@@ -1,6 +1,9 @@
 import { TokenBalanceEntity, TokenEntity } from "./entities";
 import { type TokenBalance, type Token } from "./types";
 import { BigNumber } from "bignumber.js";
+import { type Context } from "koa";
+import { DEFAULT_PAGE, DEFAULT_PER_PAGE } from "./constants";
+import { MAX_PER_PAGE } from "./config";
 
 export function deserializeBalance(
   tokenBalance: TokenBalanceEntity,
@@ -41,3 +44,53 @@ export function serializeToken(token: Token): TokenEntity {
   tokenEntity.completedAt = token.completedAt;
   return tokenEntity;
 }
+
+export const paginationUtils = {
+  /**
+   *  Paginates locally in memory from a larger collection
+   * @param records The records to paginate
+   * @param page The current page for these records
+   * @param perPage The total number of records to return per page
+   */
+  paginate: <T>(records: T[], page: number, perPage: number) => {
+    return paginationUtils.paginateSerialize(
+      records.slice((page - 1) * perPage, page * perPage),
+      records.length,
+      page,
+      perPage,
+    );
+  },
+  paginateDBFilters: (page: number, perPage: number) => {
+    return {
+      skip: (page - 1) * perPage,
+      take: perPage,
+    };
+  },
+  paginateSerialize: <T>(
+    collection: T[],
+    total: number,
+    page: number,
+    perPage: number,
+  ) => {
+    const paginated = {
+      total,
+      page,
+      perPage,
+      records: collection,
+    };
+    return paginated;
+  },
+
+  parsePaginationConfig: (ctx: Context): { page: number; perPage: number } => {
+    const page =
+      ctx.query.page === undefined ? DEFAULT_PAGE : Number(ctx.query.page);
+    const perPage =
+      ctx.query.perPage === undefined
+        ? DEFAULT_PER_PAGE
+        : Number(ctx.query.perPage);
+    if (perPage > MAX_PER_PAGE) {
+      throw new Error(`perPage should be less or equal to ${MAX_PER_PAGE}`);
+    }
+    return { page, perPage };
+  },
+};
