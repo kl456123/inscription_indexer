@@ -91,6 +91,7 @@ export const paginationUtils = {
     requireCond(
       perPage <= MAX_PER_PAGE,
       `perPage should be less or equal to ${MAX_PER_PAGE}`,
+      ValidationErrors.InvalidFields,
     );
     return { page, perPage };
   },
@@ -115,4 +116,8 @@ export function requireCond(
   if (!cond) {
     throw new APIError(msg, code, data);
   }
+}
+
+export enum ValidationErrors {
+  InvalidFields = -32602,
 }
