@@ -129,6 +129,7 @@ export class TxProcessor {
 
     const token: Token = {
       tick,
+      protocol: jsonData.p,
       id: this.db.inscriptionNumber,
       max: new BigNumber(jsonData.max),
       limit: new BigNumber(jsonData.lim),

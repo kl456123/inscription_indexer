@@ -40,6 +40,9 @@ class TokenEntity {
   @Column({ name: "limit" })
   public limit: string;
 
+  @Column({ name: "protocol" })
+  public protocol: string;
+
   @Column({ name: "minted" })
   public minted: string;
 

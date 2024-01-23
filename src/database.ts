@@ -4,8 +4,12 @@ import {
   type GlobalState,
   type DBOption,
   type Transaction,
+  OrderInfo,
+  Progress,
+  Order,
 } from "./types";
-import { type Connection } from "typeorm";
+import * as _ from "lodash";
+import { type Connection, Not, IsNull, Like } from "typeorm";
 import { getDBConnectionAsync } from "./db_connection";
 import {
   TokenEntity,
@@ -60,11 +64,24 @@ export class Database {
   async getTokensInfo(
     page: number,
     perPage: number,
-    filter?: Partial<{ tick: string }>,
+    order: OrderInfo,
+    additionalFilter?: { key: string; progress: Progress },
   ): Promise<Token[]> {
+    const filter: any = {};
+
+    if (additionalFilter !== undefined) {
+      filter.tick = Like(additionalFilter.key);
+      if (additionalFilter.progress === Progress.Completed) {
+        filter.completedAt = Not(IsNull());
+      } else if (additionalFilter.progress === Progress.Ongoing) {
+        filter.completedAt = IsNull();
+      }
+    }
+
     const tokenEntities = await this.connection.manager.find(TokenEntity, {
       where: filter,
       ...paginationUtils.paginateDBFilters(page, perPage),
+      order,
     });
     const tokenInfos = tokenEntities.map(deserializeToken);
     return tokenInfos;
@@ -84,6 +101,10 @@ export class Database {
 
   async getTxCounts(): Promise<number> {
     return this.connection.manager.count(TransactionEntity);
+  }
+
+  async getTokenCounts(): Promise<number> {
+    return this.connection.manager.count(TokenEntity);
   }
 
   async getTransactions(): Promise<TransactionEntity[]> {

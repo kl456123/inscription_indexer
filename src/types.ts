@@ -11,6 +11,7 @@ export interface Transaction {
 
 export interface Token {
   tick: string;
+  protocol: string;
   id: number;
   max: BigNumber;
   limit: BigNumber;
@@ -70,4 +71,19 @@ export interface DBOption {
   dbName: string;
   dbUsername: string;
   dbPasswd: string;
+}
+
+export enum Progress {
+  Completed,
+  Ongoing,
+  All,
+}
+
+export type Order = "ASC" | "DESC";
+
+export interface OrderInfo {
+  numTxs?: Order;
+  holders?: Order;
+  createdAt?: Order;
+  progress?: Order;
 }
