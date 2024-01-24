@@ -4,12 +4,10 @@ import {
   type GlobalState,
   type DBOption,
   type Transaction,
-  OrderInfo,
+  type OrderInfo,
   Progress,
-  Order,
 } from "./types";
-import * as _ from "lodash";
-import { type Connection, Not, IsNull, Like } from "typeorm";
+import { type Connection, Not, ILike, Equal } from "typeorm";
 import { getDBConnectionAsync } from "./db_connection";
 import {
   TokenEntity,
@@ -18,6 +16,7 @@ import {
   TransactionEntity,
   GlobalStateEntity,
 } from "../src/entities";
+import { BigNumber } from "bignumber.js";
 import { deserializeBalance, deserializeToken } from "../src/utils";
 import { paginationUtils } from "./utils";
 
@@ -51,12 +50,13 @@ export class Database {
     return holdersInfo;
   }
 
-  async getHolderInfo(
-    filter?: Partial<{ tick: string; address: string }>,
-  ): Promise<TokenBalance> {
+  async getHolderInfo(filter: {
+    tick: string;
+    address: string;
+  }): Promise<TokenBalance> {
     const holdersInfo = await this.getHoldersInfo(1, 1, filter);
     if (holdersInfo.length === 0) {
-      throw new Error(`invalid holder or tick`);
+      holdersInfo.push({ ...filter, amount: new BigNumber(0) });
     }
     return holdersInfo[0];
   }
@@ -66,15 +66,15 @@ export class Database {
     perPage: number,
     order: OrderInfo,
     additionalFilter?: { key: string; progress: Progress },
-  ): Promise<Token[]> {
+  ): Promise<{ tokenInfos: Token[]; total: number; page: number }> {
     const filter: any = {};
 
     if (additionalFilter !== undefined) {
-      filter.tick = Like(additionalFilter.key);
+      filter.tick = ILike(`%${additionalFilter.key}%`);
       if (additionalFilter.progress === Progress.Completed) {
-        filter.completedAt = Not(IsNull());
+        filter.completedAt = Not(Equal(0));
       } else if (additionalFilter.progress === Progress.Ongoing) {
-        filter.completedAt = IsNull();
+        filter.completedAt = Equal(0);
       }
     }
 
@@ -84,7 +84,9 @@ export class Database {
       order,
     });
     const tokenInfos = tokenEntities.map(deserializeToken);
-    return tokenInfos;
+
+    const total = await this.getTokenCounts(filter);
+    return { tokenInfos, total, page };
   }
 
   async checkInscriptionExistByTxHash(txHash: string): Promise<boolean> {
@@ -103,8 +105,8 @@ export class Database {
     return this.connection.manager.count(TransactionEntity);
   }
 
-  async getTokenCounts(): Promise<number> {
-    return this.connection.manager.count(TokenEntity);
+  async getTokenCounts(filter): Promise<number> {
+    return this.connection.manager.count(TokenEntity, { where: filter });
   }
 
   async getTransactions(): Promise<TransactionEntity[]> {

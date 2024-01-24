@@ -24,6 +24,7 @@ export function serializeBalance(
 export function deserializeToken(token: TokenEntity): Token {
   return {
     ...token,
+    progress: new BigNumber(token.progress),
     max: new BigNumber(token.max),
     limit: new BigNumber(token.limit),
     minted: new BigNumber(token.minted),
@@ -32,11 +33,14 @@ export function deserializeToken(token: TokenEntity): Token {
 
 export function serializeToken(token: Token): TokenEntity {
   const tokenEntity = new TokenEntity();
+  // TODO(prevent scientific notation)
   tokenEntity.max = token.max.toString();
   tokenEntity.limit = token.limit.toString();
   tokenEntity.minted = token.minted.toString();
+  tokenEntity.progress = token.progress.toFixed(8);
 
   tokenEntity.id = token.id;
+  tokenEntity.protocol = token.protocol;
   tokenEntity.tick = token.tick;
   tokenEntity.holders = token.holders;
   tokenEntity.numTxs = token.numTxs;

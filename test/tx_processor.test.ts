@@ -6,9 +6,15 @@ import txs from "../data/txs.json";
 describe("tx_processor", () => {
   let txProcessor: TxProcessor;
   let database: Database;
+  const dbOption = {
+    dbHost: "localhost",
+    dbName: "avax",
+    dbUsername: "test",
+    dbPasswd: "test",
+  };
   beforeEach(async () => {
     database = new Database();
-    await database.connect();
+    await database.connect(dbOption);
     txProcessor = new TxProcessor(database, 1);
   });
 
@@ -16,11 +22,12 @@ describe("tx_processor", () => {
     await txProcessor.processTx(txs.slice(0, 3));
     const tick = "bull";
     expect(await database.checkTokenExistByTickName(tick)).to.be.true;
-    const balance = await database.getTokenBalance(
+    const holdersInfo = await database.getHoldersInfo(1, 10, {
       tick,
-      "0x32CD96D68aBAD6c4d2A4E45155feE7D233969Ce0",
-    );
-    expect(balance.amount.toNumber()).gt(0);
+      address: "0x32CD96D68aBAD6c4d2A4E45155feE7D233969Ce0",
+    });
+    expect(holdersInfo.length).gt(0);
+    expect(holdersInfo[0].amount.gt(0)).to.be.true;
 
     // lili
     expect(await database.checkTokenExistByTickName("lili")).to.be.true;

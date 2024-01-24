@@ -7,8 +7,8 @@
       "txSizes": 200
     },
     "avalanche": {
-      "fastSyncBatch": 16,
-      "txSizes": 200,
+      "fastSyncBatch": 8,
+      "txSizes": 20,
       "filterTokens": [],
       "fromBlock": 37914497
     },

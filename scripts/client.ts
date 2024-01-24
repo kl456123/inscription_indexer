@@ -7,38 +7,24 @@ async function requestGet(query: any, routePath: string): Promise<any> {
   return quoteRes;
 }
 
-async function requestAllTokensBalance(query: {
-  address: string;
-  network: string;
-}): Promise<any> {
-  return requestGet(query, "/allTokensBalance");
-}
-
 async function requestSupportedNetworks(): Promise<any> {
   return requestGet({}, "/supportedNetworks");
 }
 
-async function requestTokenBalance(query: {
+async function requestHoldersInfo(query: {
   network: string;
-  address: string;
-  tick: string;
+  address?: string;
+  key?: string;
 }): Promise<any> {
-  return requestGet(query, "/tokenBalance");
+  return requestGet(query, "/holdersInfo");
 }
 
-async function requestTokenInfo(query: {
-  tick: string;
-  network: string;
-}): Promise<any> {
-  return requestGet(query, "/tokenInfo");
-}
-
-async function requestAllTokensInfo(query: {
+async function requestTokensInfo(query: {
   network: string;
   page?: number;
   perPage?: number;
 }): Promise<any> {
-  return requestGet(query, "/allTokensInfo");
+  return requestGet(query, "/tokensInfo");
 }
 
 async function main(): Promise<void> {
@@ -48,24 +34,23 @@ async function main(): Promise<void> {
   }
   // multiple network names
   const network = networks[0];
-  const allTokensInfo = await requestAllTokensInfo({
+  const tokensInfo = await requestTokensInfo({
     network,
     page: 1,
     perPage: 10,
   });
-  console.log(allTokensInfo);
+  console.log(tokensInfo);
 
   const tick = "avas";
   const address = "0x0D1B983bb5839F36dee794f3572848b5542BfaCC";
 
-  const tokenInfo = await requestTokenInfo({ tick, network });
-  console.log(tokenInfo);
-  // account
-  const tokensBalance = await requestAllTokensBalance({ address, network });
+  // holders
+  const tokensBalance = await requestHoldersInfo({
+    address,
+    network,
+    key: tick,
+  });
   console.log(tokensBalance);
-
-  const tokenBalance = await requestTokenBalance({ address, tick, network });
-  console.log(tokenBalance);
 }
 
 main()

@@ -16,6 +16,7 @@ export interface Token {
   max: BigNumber;
   limit: BigNumber;
   minted: BigNumber;
+  progress: BigNumber;
   holders: number;
   numTxs: number;
   createdAt: number;
@@ -79,7 +80,7 @@ export enum Progress {
   All,
 }
 
-export type Order = "ASC" | "DESC";
+export type Order = "ASC" | "DESC" | "asc" | "desc";
 
 export interface OrderInfo {
   numTxs?: Order;

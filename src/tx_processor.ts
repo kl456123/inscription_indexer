@@ -127,13 +127,17 @@ export class TxProcessor {
     }
     logger.info(`find new token: ${tick}`);
 
+    const max = new BigNumber(jsonData.max);
+    const minted = new BigNumber(0);
+    const progress = minted.div(max);
     const token: Token = {
       tick,
       protocol: jsonData.p,
       id: this.db.inscriptionNumber,
-      max: new BigNumber(jsonData.max),
+      max,
+      minted,
       limit: new BigNumber(jsonData.lim),
-      minted: new BigNumber(0),
+      progress,
       holders: 0,
       numTxs: 0,
       createdAt: tx.timestamp,
@@ -175,7 +179,9 @@ export class TxProcessor {
     }
     balance.amount = balance.amount.plus(amt);
 
+    // update token info
     tokenInfo.minted = tokenInfo.minted.plus(amt);
+    tokenInfo.progress = tokenInfo.minted.div(tokenInfo.max);
     tokenInfo.numTxs++;
     if (tokenInfo.minted.eq(tokenInfo.max)) {
       tokenInfo.completedAt = tx.timestamp;

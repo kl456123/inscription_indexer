@@ -34,17 +34,20 @@ class TokenEntity {
   @Column({ name: "tick" })
   public tick: string;
 
-  @Column({ name: "max" })
+  @Column({ name: "max", type: "bigint" })
   public max: string;
 
-  @Column({ name: "limit" })
+  @Column({ name: "limit", type: "bigint" })
   public limit: string;
 
   @Column({ name: "protocol" })
   public protocol: string;
 
-  @Column({ name: "minted" })
+  @Column({ name: "minted", type: "bigint" })
   public minted: string;
+
+  @Column({ name: "progress" })
+  public progress: string;
 
   @Column({ name: "holders" })
   public holders: number;
