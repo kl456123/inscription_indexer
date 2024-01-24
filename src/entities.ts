@@ -1,8 +1,11 @@
-import { Entity, PrimaryColumn, Column } from "typeorm";
+import { Entity, PrimaryColumn, Column, PrimaryGeneratedColumn } from "typeorm";
 import { Transaction, Inscription } from "./types";
 
 @Entity({ name: "transaction" })
 class TransactionEntity {
+  @PrimaryGeneratedColumn("increment", { name: "txId" })
+  public txId: number;
+
   @PrimaryColumn({ name: "txHash" })
   public txHash: string;
 
@@ -113,8 +116,8 @@ class GlobalStateEntity {
   @PrimaryColumn({ name: "id" })
   id: number;
 
-  @Column({ name: "processed_block_number" })
-  proccessedBlockNumber: number;
+  @Column({ name: "processed_txId" })
+  processedTxId: number;
 
   @Column({ name: "subscribed_block_number" })
   subscribedBlockNumber: number;
@@ -123,7 +126,7 @@ class GlobalStateEntity {
   inscriptionNumber: number;
 
   constructor(globalState: {
-    proccessedBlockNumber?: number;
+    processedTxId?: number;
     subscribedBlockNumber?: number;
     inscriptionNumber?: number;
   }) {

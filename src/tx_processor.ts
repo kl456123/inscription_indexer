@@ -1,12 +1,7 @@
 import { type Database } from "./database";
 import { BigNumber } from "bignumber.js";
 import { setIntervalAsync } from "set-interval-async";
-import {
-  InscriptionEntity,
-  TokenEntity,
-  TransactionEntity,
-  GlobalStateEntity,
-} from "./entities";
+import { InscriptionEntity, TokenEntity, GlobalStateEntity } from "./entities";
 import { serializeBalance, deserializeToken, serializeToken } from "./utils";
 import { type Transaction, type Inscription, type Token } from "./types";
 import { logger } from "./logger";
@@ -28,7 +23,6 @@ export class TxProcessor {
         logger.debug(
           `parse inscription in txHash(${tx.txHash}) error, skip it`,
         );
-        await this.db.removeTransaction(tx);
         continue;
       }
       // parse content type
@@ -48,7 +42,6 @@ export class TxProcessor {
           if (await this.db.checkInscriptionExistByTxHash(tx.txHash)) {
             logger.debug("parsed already, skip it");
             // processed already
-            await this.db.removeTransaction(tx);
             continue;
           }
           switch (operation) {
@@ -88,21 +81,20 @@ export class TxProcessor {
               await transactionEntityManager.save(entities);
               await transactionEntityManager.save(
                 new GlobalStateEntity({
-                  proccessedBlockNumber: tx.blockNumber,
+                  processedTxId: tx.txId! + 1,
                   inscriptionNumber: this.db.inscriptionNumber,
                 }),
               );
 
-              // sweep the processed tx
-              // TODO(do we need to save it)
-              await transactionEntityManager.remove(new TransactionEntity(tx));
+              // no need to sweep the processed tx
             },
           );
         } else {
           logger.debug(
             `parse unknown protocol ${protocol} in txHash(${tx.txHash}) error, skip it`,
           );
-          await this.db.removeTransaction(tx);
+          // we should better not remove new protocol of inscription
+          // await this.db.removeTransaction(tx);
         }
       } catch {
         logger.debug(
@@ -242,14 +234,18 @@ export class TxProcessor {
 
   start(): void {
     setIntervalAsync(async () => {
+      const { processedTxId } = await this.db.getGlobalState();
       // consume all txs from db
-      const count = await this.db.getTxCounts();
+      const count = await this.db.getTxCounts(processedTxId);
       if (count > this.txSizes) {
         logger.info(`start processing ${count} txs`);
-        for (let i = 0; i < count; i += this.txSizes) {
-          const txs = await this.db.connection.manager.find(TransactionEntity, {
-            take: Math.min(this.txSizes, count - i),
-          });
+        for (let page = 1; page * this.txSizes <= count; page += 1) {
+          // fetch txs by page
+          const txs = await this.db.getTransactions(
+            page,
+            this.txSizes,
+            processedTxId,
+          );
           await this.processTx(txs);
         }
         logger.info(`${count} txs processed`);

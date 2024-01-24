@@ -30,7 +30,7 @@ export function getAllRouters(databases: Record<string, Database>): Router {
 
   router.get("/tokensInfo", async (ctx) => {
     validateNetworkName(ctx.query.network, databases);
-    const key = ctx.query.key as string;
+    const keyword = ctx.query.keyword as string | undefined;
     const progress = parseInt(ctx.query.progress as string);
     // add progress field
     const availableNames = ["numTxs", "holders", "createdAt", "progress"];
@@ -65,7 +65,7 @@ export function getAllRouters(databases: Record<string, Database>): Router {
     const db = databases[ctx.query.network as string];
 
     ctx.body = await db.getTokensInfo(page, perPage, order, {
-      key,
+      keyword,
       progress,
     });
   });

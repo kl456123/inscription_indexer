@@ -1,6 +1,8 @@
 import { type BigNumber } from "bignumber.js";
 
 export interface Transaction {
+  // only used internal
+  txId?: number;
   from: string;
   to: string;
   blockNumber: number;
@@ -60,7 +62,7 @@ export interface TokenBalance {
 }
 
 export interface GlobalState {
-  proccessedBlockNumber: number;
+  processedTxId: number;
   subscribedBlockNumber: number;
   inscriptionNumber: number;
 }

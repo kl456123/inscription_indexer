@@ -89,9 +89,9 @@ export const paginationUtils = {
     const page =
       ctx.query.page === undefined ? DEFAULT_PAGE : Number(ctx.query.page);
     const perPage =
-      ctx.query.perPage === undefined
+      ctx.query.pageSize === undefined
         ? DEFAULT_PER_PAGE
-        : Number(ctx.query.perPage);
+        : Number(ctx.query.pageSize);
     requireCond(
       perPage <= MAX_PER_PAGE,
       `perPage should be less or equal to ${MAX_PER_PAGE}`,

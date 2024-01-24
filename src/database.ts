@@ -7,7 +7,7 @@ import {
   type OrderInfo,
   Progress,
 } from "./types";
-import { type Connection, Not, ILike, Equal } from "typeorm";
+import { type Connection, Not, ILike, Equal, MoreThanOrEqual } from "typeorm";
 import { getDBConnectionAsync } from "./db_connection";
 import {
   TokenEntity,
@@ -65,12 +65,15 @@ export class Database {
     page: number,
     perPage: number,
     order: OrderInfo,
-    additionalFilter?: { key: string; progress: Progress },
+    additionalFilter?: { keyword?: string; progress: Progress },
   ): Promise<{ tokenInfos: Token[]; total: number; page: number }> {
+    // TODO(fix filter type)
     const filter: any = {};
 
     if (additionalFilter !== undefined) {
-      filter.tick = ILike(`%${additionalFilter.key}%`);
+      if (additionalFilter.keyword !== undefined) {
+        filter.tick = ILike(`%${additionalFilter.keyword}%`);
+      }
       if (additionalFilter.progress === Progress.Completed) {
         filter.completedAt = Not(Equal(0));
       } else if (additionalFilter.progress === Progress.Ongoing) {
@@ -101,16 +104,28 @@ export class Database {
     });
   }
 
-  async getTxCounts(): Promise<number> {
-    return this.connection.manager.count(TransactionEntity);
+  async getTxCounts(fromTxId: number): Promise<number> {
+    return this.connection.manager.count(TransactionEntity, {
+      where: { txId: MoreThanOrEqual(fromTxId) },
+    });
   }
 
   async getTokenCounts(filter): Promise<number> {
     return this.connection.manager.count(TokenEntity, { where: filter });
   }
 
-  async getTransactions(): Promise<TransactionEntity[]> {
-    const txs = await this.connection.manager.find(TransactionEntity);
+  async getTransactions(
+    page: number,
+    perPage: number,
+    fromTxId: number,
+  ): Promise<TransactionEntity[]> {
+    const txs = await this.connection.manager.find(TransactionEntity, {
+      where: { txId: MoreThanOrEqual(fromTxId) },
+      ...paginationUtils.paginateDBFilters(page, perPage),
+      order: {
+        txId: "ASC",
+      },
+    });
     return txs;
   }
 
@@ -120,7 +135,7 @@ export class Database {
     if (globalStateEntity.length === 0) {
       return await this.connection.manager.save(
         new GlobalStateEntity({
-          proccessedBlockNumber: 0,
+          processedTxId: 0,
           subscribedBlockNumber: 0,
           inscriptionNumber: 0,
         }),
@@ -132,10 +147,10 @@ export class Database {
     return globalStateEntity[0];
   }
 
-  async updateProcessedBlockNumber(blockNumber: number): Promise<void> {
+  async updateProcessedTxId(txId: number): Promise<void> {
     await this.connection.manager.save({
       id: 0,
-      proccessedBlockNumber: blockNumber,
+      proccssedTxId: txId,
     });
   }
 
