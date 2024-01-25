@@ -7,7 +7,14 @@ import {
   type OrderInfo,
   Progress,
 } from "./types";
-import { type Connection, Not, ILike, Equal, MoreThanOrEqual } from "typeorm";
+import {
+  type Connection,
+  Not,
+  ILike,
+  Equal,
+  MoreThanOrEqual,
+  type FindOptionsOrder,
+} from "typeorm";
 import { getDBConnectionAsync } from "./db_connection";
 import {
   TokenEntity,
@@ -37,25 +44,28 @@ export class Database {
   async getHoldersInfo(
     page: number,
     perPage: number,
+    order?: FindOptionsOrder<TokenBalanceEntity>,
     filter?: Partial<{ tick: string; address: string }>,
-  ): Promise<TokenBalance[]> {
+  ): Promise<{ holdersInfo: TokenBalance[]; total: number; page: number }> {
     const holdersEntites = await this.connection.manager.find(
       TokenBalanceEntity,
       {
         where: filter,
         ...paginationUtils.paginateDBFilters(page, perPage),
+        order,
       },
     );
     const holdersInfo = holdersEntites.map(deserializeBalance);
-    return holdersInfo;
+    const total = await this.getHoldersCounts(filter);
+    return { holdersInfo, total, page };
   }
 
   async getHolderInfo(filter: {
     tick: string;
     address: string;
   }): Promise<TokenBalance> {
-    const holdersInfo = await this.getHoldersInfo(1, 1, filter);
-    if (holdersInfo.length === 0) {
+    const { holdersInfo, total } = await this.getHoldersInfo(1, 1, {}, filter);
+    if (total === 0) {
       holdersInfo.push({ ...filter, amount: new BigNumber(0) });
     }
     return holdersInfo[0];
@@ -112,6 +122,10 @@ export class Database {
 
   async getTokenCounts(filter): Promise<number> {
     return this.connection.manager.count(TokenEntity, { where: filter });
+  }
+
+  async getHoldersCounts(filter): Promise<number> {
+    return this.connection.manager.count(TokenBalanceEntity, { where: filter });
   }
 
   async getTransactions(

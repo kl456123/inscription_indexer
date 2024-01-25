@@ -1,6 +1,7 @@
 import { type ethers, type Block, type TransactionResponse } from "ethers";
 import { logger } from "./logger";
 import { type Transaction } from "./types";
+import retry from "async-retry";
 import { setIntervalAsync } from "set-interval-async";
 import { type Database } from "./database";
 import { TransactionEntity, GlobalStateEntity } from "./entities";
@@ -35,7 +36,20 @@ export class TxSubscriber {
       for (const txHash of block.transactions) {
         txPromises.push(this.provider.getTransaction(txHash));
       }
-      const rawTxs = await Promise.all(txPromises);
+      let rawTxs: Array<TransactionResponse | null> = [];
+      await retry(
+        async () => {
+          rawTxs = await Promise.all(txPromises);
+        },
+        {
+          retries: this.retries,
+          onRetry: (error, retry) => {
+            logger.error(
+              `Failed to get transactions due to ${error.message}, retry attempt: ${retry}`,
+            );
+          },
+        },
+      );
 
       for (let i = 0; i < rawTxs.length; ++i) {
         const rawTx = rawTxs[i];

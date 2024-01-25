@@ -125,3 +125,33 @@ export function requireCond(
 export enum ValidationErrors {
   InvalidFields = -32602,
 }
+
+export function parseOrderInfo(ctx: Context, availableNames: string[]): any {
+  const order = {};
+  const orderBy = ctx.query.orderBy as string | undefined;
+  if (orderBy !== undefined) {
+    requireCond(
+      availableNames.includes(orderBy),
+      `invalid orderBy params: ${orderBy}`,
+      ValidationErrors.InvalidFields,
+    );
+    // check orderType
+    const orderType = ctx.query.order as string;
+    requireCond(
+      ["ASC", "asc", "desc", "DESC"].includes(orderType),
+      `invalid order params: ${orderType}`,
+      ValidationErrors.InvalidFields,
+    );
+    requireCond(
+      orderType !== undefined,
+      `invalid orderType`,
+      ValidationErrors.InvalidFields,
+    );
+    order[orderBy] = orderType;
+  }
+  const keyNames = Object.keys(order);
+  if (keyNames.length > 1) {
+    throw new Error(`invalid order info`);
+  }
+  return order;
+}
