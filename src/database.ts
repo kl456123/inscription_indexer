@@ -56,7 +56,8 @@ export class Database {
       },
     );
     const holdersInfo = holdersEntites.map(deserializeBalance);
-    const total = await this.getHoldersCounts(filter);
+    const totalCount = await this.getHoldersCounts(filter);
+    const total = Math.ceil(totalCount / perPage);
     return { holdersInfo, total, page };
   }
 
@@ -98,7 +99,8 @@ export class Database {
     });
     const tokenInfos = tokenEntities.map(deserializeToken);
 
-    const total = await this.getTokenCounts(filter);
+    const totalCount = await this.getTokenCounts(filter);
+    const total = Math.ceil(totalCount / perPage);
     return { tokenInfos, total, page };
   }
 
