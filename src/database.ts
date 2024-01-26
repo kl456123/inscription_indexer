@@ -4,7 +4,6 @@ import {
   type GlobalState,
   type DBOption,
   type Transaction,
-  type OrderInfo,
   Progress,
 } from "./types";
 import {
@@ -75,7 +74,7 @@ export class Database {
   async getTokensInfo(
     page: number,
     perPage: number,
-    order: OrderInfo,
+    order?: FindOptionsOrder<TokenBalanceEntity>,
     additionalFilter?: { keyword?: string; progress: Progress },
   ): Promise<{ tokenInfos: Token[]; total: number; page: number }> {
     // TODO(fix filter type)

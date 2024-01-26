@@ -1,8 +1,9 @@
 import { TokenBalanceEntity, TokenEntity } from "./entities";
-import { type TokenBalance, type Token } from "./types";
+import { type TokenBalance, type Token, Progress, Order } from "./types";
 import { BigNumber } from "bignumber.js";
 import { type Context } from "koa";
 import { DEFAULT_PAGE, DEFAULT_PER_PAGE } from "./constants";
+import { type FindOptionsOrder } from "typeorm";
 import { MAX_PER_PAGE } from "./config";
 
 export function deserializeBalance(
@@ -126,8 +127,20 @@ export enum ValidationErrors {
   InvalidFields = -32602,
 }
 
-export function parseOrderInfo(ctx: Context, availableNames: string[]): any {
-  const order = {};
+export function parseProgressInfo(ctx: Context): Progress {
+  const progress = parseInt(ctx.query.progress as string);
+  requireCond(
+    Object.values(Progress).includes(progress),
+    `invalid orderBy params: ${progress}`,
+  );
+  return progress as Progress;
+}
+
+export function parseOrderInfo(
+  ctx: Context,
+  availableNames: string[],
+): FindOptionsOrder<TokenBalanceEntity> {
+  const order: FindOptionsOrder<TokenBalanceEntity> = {};
   const orderBy = ctx.query.orderBy as string | undefined;
   if (orderBy !== undefined) {
     requireCond(
@@ -135,16 +148,15 @@ export function parseOrderInfo(ctx: Context, availableNames: string[]): any {
       `invalid orderBy params: ${orderBy}`,
       ValidationErrors.InvalidFields,
     );
-    // check orderType
-    const orderType = ctx.query.order as string;
     requireCond(
-      ["ASC", "asc", "desc", "DESC"].includes(orderType),
-      `invalid order params: ${orderType}`,
+      ctx.query.order !== undefined,
+      `invalid orderType`,
       ValidationErrors.InvalidFields,
     );
+    const orderType = parseInt(ctx.query.order as string);
     requireCond(
-      orderType !== undefined,
-      `invalid orderType`,
+      Object.values(Order).includes(orderType),
+      `invalid order params: ${orderType}`,
       ValidationErrors.InvalidFields,
     );
     order[orderBy] = orderType;

@@ -82,11 +82,7 @@ export enum Progress {
   All,
 }
 
-export type Order = "ASC" | "DESC" | "asc" | "desc";
-
-export interface OrderInfo {
-  numTxs?: Order;
-  holders?: Order;
-  createdAt?: Order;
-  progress?: Order;
+export enum Order {
+  ASC = 1,
+  DESC = -1,
 }

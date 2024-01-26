@@ -2,17 +2,17 @@
   "serverPort": "3000",
   "serverIP": "127.0.0.1",
   "networks": {
-    "ethereum": {
+    "1": {
       "fastSyncBatch": 16,
       "txSizes": 200
     },
-    "avalanche": {
+    "43114": {
       "fastSyncBatch": 8,
       "txSizes": 20,
       "filterTokens": [],
       "fromBlock": 37914497
     },
-    "polygon": {
+    "137": {
       "fastSyncBatch": 16,
       "txSizes": 100,
       "filterTokens": []

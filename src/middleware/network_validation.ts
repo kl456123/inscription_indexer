@@ -1,24 +1,24 @@
 import { type Database } from "../database";
 import { requireCond, ValidationErrors } from "../utils";
 
-export function validateNetworkName(
-  network: string | string[] | undefined,
+export function validateChainId(
+  chainId: string | string[] | undefined,
   dbs: Record<string, Database>,
 ): void {
   requireCond(
-    network !== undefined,
-    "no network params!",
+    chainId !== undefined,
+    "no chainId params!",
     ValidationErrors.InvalidFields,
   );
   requireCond(
-    typeof network === "string",
-    `invalid network params: ${network!.toString()}`,
+    typeof chainId === "string",
+    `invalid chainId params: ${chainId!.toString()}`,
     ValidationErrors.InvalidFields,
   );
-  network = network as string;
+  chainId = chainId as string;
   requireCond(
-    dbs[network] !== null,
-    `unknown network name: ${network}`,
+    dbs[chainId] !== undefined,
+    `unknown chainId name: ${chainId}`,
     ValidationErrors.InvalidFields,
   );
 }

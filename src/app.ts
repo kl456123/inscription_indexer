@@ -24,35 +24,34 @@ async function startJobsForMultichain(): Promise<{
   databases: MultiChainDatabase;
 }> {
   const networks: Record<string, string | undefined> = {
-    ethereum: process.env.ETHEREUM_URL,
-    avalanche: process.env.AVALANCHE_URL,
-    polygon: process.env.POLYGON_URL,
+    1: process.env.ETHEREUM_URL,
+    43114: process.env.AVALANCHE_URL,
+    137: process.env.POLYGON_URL,
   };
   const providers: MultiChainProvider = {};
   const databases: MultiChainDatabase = {};
 
   const validNetworks = _.omitBy(networks, (item) => _.isNil(item));
-  for (const networkName of Object.keys(validNetworks)) {
+  for (const chainId of Object.keys(validNetworks)) {
     const { provider, db } = await startJobsForSingleNetwork(
-      networkName,
-      validNetworks[networkName]!,
+      chainId,
+      validNetworks[chainId]!,
     );
-    providers[networkName] = provider;
-    databases[networkName] = db;
+    providers[chainId] = provider;
+    databases[chainId] = db;
   }
   return { providers, databases };
 }
 
 async function startJobsForSingleNetwork(
-  networkName: string,
+  chainId: string,
   url: string,
 ): Promise<{ provider: ethers.JsonRpcProvider; db: Database }> {
-  const options = optionsJson.networks[networkName];
+  const options = optionsJson.networks[chainId];
   const provider = new ethers.JsonRpcProvider(url);
-  const { chainId } = await provider.getNetwork();
   const dbOption: DBOption = {
     dbHost: process.env.DB_HOST ?? "localhost",
-    dbName: dbNames[parseInt(chainId.toString())],
+    dbName: dbNames[chainId],
     dbUsername: process.env.DB_USERNAME ?? "test",
     dbPasswd: process.env.DB_PASSWD ?? "test",
   };
@@ -65,7 +64,7 @@ async function startJobsForSingleNetwork(
     currentBlockNumber,
   );
 
-  logger.info(`start ${networkName} work from blockNumber: ${fromBlock}`);
+  logger.info(`start ${dbNames[chainId]} work from blockNumber: ${fromBlock}`);
 
   // fetch txs and save to db
   const txSubscriber = new TxSubscriber(provider, db, options.fastSyncBatch);
