@@ -9,7 +9,8 @@ export function validateChainIds(
     return validChainIds;
   } else {
     if (typeof chainIds === "string") {
-      chainIds = [chainIds];
+      // parse to string array
+      chainIds = chainIds.split(",");
     } else {
       chainIds = chainIds as string[];
     }
