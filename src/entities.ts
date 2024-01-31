@@ -9,6 +9,9 @@ class TransactionEntity {
   @PrimaryColumn({ name: "txHash" })
   public txHash: string;
 
+  @Column({ name: "chainId" })
+  public chainId: number;
+
   @Column({ name: "from" })
   public from: string;
 
@@ -36,6 +39,9 @@ class TokenEntity {
 
   @Column({ name: "tick" })
   public tick: string;
+
+  @Column({ name: "chainId" })
+  public chainId: number;
 
   @Column({ name: "max", type: "bigint" })
   public max: string;
@@ -69,6 +75,9 @@ class TokenEntity {
 class InscriptionEntity {
   @PrimaryColumn({ name: "id" })
   id: number;
+
+  @Column({ name: "chainId" })
+  public chainId: number;
 
   @Column({ name: "txHash" })
   txHash: string;
@@ -104,6 +113,9 @@ class TokenBalanceEntity {
   @PrimaryColumn({ name: "address" })
   address: string;
 
+  @Column({ name: "chainId" })
+  public chainId: number;
+
   @PrimaryColumn({ name: "tick" })
   tick: string;
 
@@ -113,8 +125,8 @@ class TokenBalanceEntity {
 
 @Entity({ name: "global_state" })
 class GlobalStateEntity {
-  @PrimaryColumn({ name: "id" })
-  id: number;
+  @PrimaryColumn({ name: "chainId" })
+  public chainId: number;
 
   @Column({ name: "processed_txId" })
   processedTxId: number;
@@ -126,11 +138,11 @@ class GlobalStateEntity {
   inscriptionNumber: number;
 
   constructor(globalState: {
+    chainId: number;
     processedTxId?: number;
     subscribedBlockNumber?: number;
     inscriptionNumber?: number;
   }) {
-    this.id = 0;
     Object.assign(this, globalState);
   }
 }

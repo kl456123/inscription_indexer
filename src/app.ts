@@ -17,11 +17,11 @@ import { errorHandler } from "./middleware/error_handler";
 dotenv.config();
 
 type MultiChainProvider = Record<string, ethers.JsonRpcProvider>;
-type MultiChainDatabase = Record<string, Database>;
 
 async function startJobsForMultichain(): Promise<{
   providers: MultiChainProvider;
-  databases: MultiChainDatabase;
+  database: Database;
+  chainIds: number[];
 }> {
   const networks: Record<string, string | undefined> = {
     1: process.env.ETHEREUM_URL,
@@ -29,35 +29,38 @@ async function startJobsForMultichain(): Promise<{
     137: process.env.POLYGON_URL,
   };
   const providers: MultiChainProvider = {};
-  const databases: MultiChainDatabase = {};
-
-  const validNetworks = _.omitBy(networks, (item) => _.isNil(item));
-  for (const chainId of Object.keys(validNetworks)) {
-    const { provider, db } = await startJobsForSingleNetwork(
-      chainId,
-      validNetworks[chainId]!,
-    );
-    providers[chainId] = provider;
-    databases[chainId] = db;
-  }
-  return { providers, databases };
-}
-
-async function startJobsForSingleNetwork(
-  chainId: string,
-  url: string,
-): Promise<{ provider: ethers.JsonRpcProvider; db: Database }> {
-  const options = optionsJson.networks[chainId];
-  const provider = new ethers.JsonRpcProvider(url);
   const dbOption: DBOption = {
     dbHost: process.env.DB_HOST ?? "localhost",
-    dbName: dbNames[chainId],
+    dbName: process.env.DB_NAME ?? "inscription_indexer",
     dbUsername: process.env.DB_USERNAME ?? "test",
     dbPasswd: process.env.DB_PASSWD ?? "test",
   };
   const db = new Database();
   await db.connect(dbOption);
-  const { subscribedBlockNumber } = await db.getGlobalState();
+
+  const validNetworks = _.omitBy(networks, (item) => _.isNil(item));
+  const chainIds = Object.keys(validNetworks).map((chainId) =>
+    parseInt(chainId),
+  );
+  for (const chainId of chainIds) {
+    const { provider } = await startJobsForSingleNetwork(
+      chainId,
+      validNetworks[chainId]!,
+      db,
+    );
+    providers[chainId] = provider;
+  }
+  return { providers, database: db, chainIds };
+}
+
+async function startJobsForSingleNetwork(
+  chainId: number,
+  url: string,
+  db: Database,
+): Promise<ethers.JsonRpcProvider> {
+  const options = optionsJson.networks[chainId];
+  const provider = new ethers.JsonRpcProvider(url);
+  const { subscribedBlockNumber } = await db.getGlobalState(chainId);
   const currentBlockNumber = await provider.getBlockNumber();
   const fromBlock = Math.min(
     Math.max(subscribedBlockNumber, options.fromBlock ?? currentBlockNumber),
@@ -67,24 +70,35 @@ async function startJobsForSingleNetwork(
   logger.info(`start ${dbNames[chainId]} work from blockNumber: ${fromBlock}`);
 
   // fetch txs and save to db
-  const txSubscriber = new TxSubscriber(provider, db, options.fastSyncBatch);
+  const txSubscriber = new TxSubscriber(
+    provider,
+    db,
+    chainId,
+    options.fastSyncBatch,
+  );
   txSubscriber.start(fromBlock).catch((error) => {
     logger.error(error);
   });
 
+  const { inscriptionNumber } = await db.getGlobalState(chainId);
   // process all saved txs in db
-  const txProcessor = new TxProcessor(db, options.txSizes);
+  const txProcessor = new TxProcessor(
+    db,
+    chainId,
+    inscriptionNumber,
+    options.txSizes,
+  );
   txProcessor.start();
-  return { provider, db };
+  return provider;
 }
 
 async function getApp(): Promise<void> {
   const app = new Koa();
-  const { databases } = await startJobsForMultichain();
+  const { database, chainIds } = await startJobsForMultichain();
   app.use(cors());
   app.use(KoaLogger());
   app.use(errorHandler);
-  const router = getAllRouters(databases);
+  const router = getAllRouters({ database, chainIds });
   app.use(router.routes());
   app.listen(parseInt(optionsJson.serverPort), optionsJson.serverIP);
 }

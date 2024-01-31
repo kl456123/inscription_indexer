@@ -19,6 +19,7 @@ export function serializeBalance(
   balanceEntity.amount = tokenBalance.amount.toString();
   balanceEntity.address = tokenBalance.address;
   balanceEntity.tick = tokenBalance.tick;
+  balanceEntity.chainId = tokenBalance.chainId;
   return balanceEntity;
 }
 
@@ -47,6 +48,7 @@ export function serializeToken(token: Token): TokenEntity {
   tokenEntity.numTxs = token.numTxs;
   tokenEntity.createdAt = token.createdAt;
   tokenEntity.completedAt = token.completedAt;
+  tokenEntity.chainId = token.chainId;
   return tokenEntity;
 }
 

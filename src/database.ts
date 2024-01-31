@@ -11,6 +11,7 @@ import {
   Not,
   ILike,
   Equal,
+  In,
   MoreThanOrEqual,
   type FindOptionsOrder,
 } from "typeorm";
@@ -27,25 +28,26 @@ import { deserializeBalance, deserializeToken } from "../src/utils";
 import { paginationUtils } from "./utils";
 
 export class Database {
-  public inscriptionNumber: number;
   public connection: Connection;
 
-  constructor() {
-    this.inscriptionNumber = 0;
-  }
+  // constructor() {}
 
   async connect(dbOption: DBOption): Promise<void> {
     this.connection = await getDBConnectionAsync(dbOption);
-    const { inscriptionNumber } = await this.getGlobalState();
-    this.inscriptionNumber = inscriptionNumber;
   }
 
   async getHoldersInfo(
     page: number,
     perPage: number,
     order?: FindOptionsOrder<TokenBalanceEntity>,
-    filter?: Partial<{ tick: string; address: string }>,
+    additionalFilter?: { tick: string; address: string; chainIds: number[] },
   ): Promise<{ holdersInfo: TokenBalance[]; total: number; page: number }> {
+    const filter: any = {};
+    if (additionalFilter !== undefined) {
+      filter.tick = additionalFilter.tick;
+      filter.address = additionalFilter.address;
+      filter.chainId = In(additionalFilter.chainIds);
+    }
     const holdersEntites = await this.connection.manager.find(
       TokenBalanceEntity,
       {
@@ -60,13 +62,21 @@ export class Database {
     return { holdersInfo, total, page };
   }
 
-  async getHolderInfo(filter: {
-    tick: string;
-    address: string;
-  }): Promise<TokenBalance> {
-    const { holdersInfo, total } = await this.getHoldersInfo(1, 1, {}, filter);
+  async getHolderInfo(
+    chainId: number,
+    filter: {
+      tick: string;
+      address: string;
+    },
+  ): Promise<TokenBalance> {
+    const { holdersInfo, total } = await this.getHoldersInfo(
+      1,
+      1,
+      {},
+      { ...filter, chainIds: [chainId] },
+    );
     if (total === 0) {
-      holdersInfo.push({ ...filter, amount: new BigNumber(0) });
+      holdersInfo.push({ chainId, ...filter, amount: new BigNumber(0) });
     }
     return holdersInfo[0];
   }
@@ -75,7 +85,11 @@ export class Database {
     page: number,
     perPage: number,
     order?: FindOptionsOrder<TokenBalanceEntity>,
-    additionalFilter?: { keyword?: string; progress: Progress },
+    additionalFilter?: {
+      keyword?: string;
+      progress: Progress;
+      chainIds: number[];
+    },
   ): Promise<{ tokenInfos: Token[]; total: number; page: number }> {
     // TODO(fix filter type)
     const filter: any = {};
@@ -89,6 +103,7 @@ export class Database {
       } else if (additionalFilter.progress === Progress.Ongoing) {
         filter.completedAt = Equal(0);
       }
+      filter.chainId = In(additionalFilter.chainIds);
     }
 
     const tokenEntities = await this.connection.manager.find(TokenEntity, {
@@ -133,9 +148,10 @@ export class Database {
     page: number,
     perPage: number,
     fromTxId: number,
+    chainId: number,
   ): Promise<TransactionEntity[]> {
     const txs = await this.connection.manager.find(TransactionEntity, {
-      where: { txId: MoreThanOrEqual(fromTxId) },
+      where: { txId: MoreThanOrEqual(fromTxId), chainId },
       ...paginationUtils.paginateDBFilters(page, perPage),
       order: {
         txId: "ASC",
@@ -144,12 +160,15 @@ export class Database {
     return txs;
   }
 
-  async getGlobalState(): Promise<GlobalState> {
-    const globalStateEntity =
-      await this.connection.manager.find(GlobalStateEntity);
+  async getGlobalState(chainId: number): Promise<GlobalState> {
+    const globalStateEntity = await this.connection.manager.find(
+      GlobalStateEntity,
+      { where: { chainId } },
+    );
     if (globalStateEntity.length === 0) {
       return await this.connection.manager.save(
         new GlobalStateEntity({
+          chainId,
           processedTxId: 0,
           subscribedBlockNumber: 0,
           inscriptionNumber: 0,
@@ -160,20 +179,6 @@ export class Database {
       throw new Error(`multiple global states exist`);
     }
     return globalStateEntity[0];
-  }
-
-  async updateProcessedTxId(txId: number): Promise<void> {
-    await this.connection.manager.save({
-      id: 0,
-      proccssedTxId: txId,
-    });
-  }
-
-  async updateSubscribedBlockNumber(blockNumber: number): Promise<void> {
-    await this.connection.manager.save({
-      id: 0,
-      subscribedBlockNumber: blockNumber,
-    });
   }
 
   async removeTransaction(tx: Transaction): Promise<void> {

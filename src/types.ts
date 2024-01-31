@@ -9,6 +9,7 @@ export interface Transaction {
   txHash: string;
   data: string;
   timestamp: number;
+  chainId: number;
 }
 
 export interface Token {
@@ -23,6 +24,7 @@ export interface Token {
   numTxs: number;
   createdAt: number;
   completedAt: number;
+  chainId: number;
 }
 
 export interface Inscription {
@@ -37,6 +39,7 @@ export interface Inscription {
   content: string;
   contentType: string;
   valid: boolean;
+  chainId: number;
 }
 
 export interface Transfer {
@@ -59,12 +62,14 @@ export interface TokenBalance {
   address: string;
   tick: string;
   amount: BigNumber;
+  chainId: number;
 }
 
 export interface GlobalState {
   processedTxId: number;
   subscribedBlockNumber: number;
   inscriptionNumber: number;
+  chainId: number;
 }
 
 export type Operation = Mint | Deploy | Transfer;

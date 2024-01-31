@@ -9,6 +9,8 @@ import { logger } from "./logger";
 export class TxProcessor {
   constructor(
     protected db: Database,
+    protected chainId: number,
+    protected inscriptionNumber: number,
     protected txSizes: number = 20,
   ) {}
 
@@ -62,7 +64,8 @@ export class TxProcessor {
             }
           }
           const inscription: Inscription = {
-            id: this.db.inscriptionNumber,
+            id: this.inscriptionNumber++,
+            chainId: this.chainId,
             txHash: tx.txHash,
             protocol,
             from: tx.from,
@@ -72,7 +75,6 @@ export class TxProcessor {
             contentType,
             valid: entities.length !== 0,
           };
-          this.db.inscriptionNumber++;
           await this.db.connection.manager.transaction(
             async (transactionEntityManager) => {
               await transactionEntityManager.save(
@@ -81,8 +83,9 @@ export class TxProcessor {
               await transactionEntityManager.save(entities);
               await transactionEntityManager.save(
                 new GlobalStateEntity({
+                  chainId: this.chainId,
                   processedTxId: tx.txId! + 1,
-                  inscriptionNumber: this.db.inscriptionNumber,
+                  inscriptionNumber: this.inscriptionNumber,
                 }),
               );
 
@@ -123,9 +126,10 @@ export class TxProcessor {
     const minted = new BigNumber(0);
     const progress = minted.div(max);
     const token: Token = {
+      id: this.inscriptionNumber,
+      chainId: this.chainId,
       tick,
       protocol: jsonData.p,
-      id: this.db.inscriptionNumber,
       max,
       minted,
       limit: new BigNumber(jsonData.lim),
@@ -164,7 +168,10 @@ export class TxProcessor {
       return [];
     }
 
-    const balance = await this.db.getHolderInfo({ tick, address: tx.to });
+    const balance = await this.db.getHolderInfo(this.chainId, {
+      tick,
+      address: tx.to,
+    });
     if (balance.amount.isZero()) {
       // new holder
       tokenInfo.holders += 1;
@@ -208,8 +215,14 @@ export class TxProcessor {
       return [];
     }
     // check from
-    const fromBalance = await this.db.getHolderInfo({ tick, address: tx.from });
-    const toBalance = await this.db.getHolderInfo({ tick, address: tx.to });
+    const fromBalance = await this.db.getHolderInfo(this.chainId, {
+      tick,
+      address: tx.from,
+    });
+    const toBalance = await this.db.getHolderInfo(this.chainId, {
+      tick,
+      address: tx.to,
+    });
 
     if (fromBalance.amount.lt(amt)) {
       logger.debug(`exceed from account balance`);
@@ -234,7 +247,7 @@ export class TxProcessor {
 
   start(): void {
     setIntervalAsync(async () => {
-      const { processedTxId } = await this.db.getGlobalState();
+      const { processedTxId } = await this.db.getGlobalState(this.chainId);
       // consume all txs from db
       const count = await this.db.getTxCounts(processedTxId);
       if (count > this.txSizes) {
@@ -245,6 +258,7 @@ export class TxProcessor {
             page,
             this.txSizes,
             processedTxId,
+            this.chainId,
           );
           await this.processTx(txs);
         }

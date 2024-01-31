@@ -11,6 +11,7 @@ export class TxSubscriber {
   constructor(
     protected provider: ethers.JsonRpcProvider,
     protected db: Database,
+    protected chainId: number,
     protected fastSyncBatch: number = 20,
     protected confirmation: number = 5,
   ) {
@@ -66,6 +67,7 @@ export class TxSubscriber {
           continue;
         }
         const tx: Transaction = {
+          chainId: this.chainId,
           txHash: block.transactions[i],
           data: rawTx.data,
           from: rawTx.from,
@@ -81,7 +83,10 @@ export class TxSubscriber {
       async (transactionEntityManager) => {
         await transactionEntityManager.save(txs);
         await transactionEntityManager.save(
-          new GlobalStateEntity({ subscribedBlockNumber: toBlock }),
+          new GlobalStateEntity({
+            chainId: this.chainId,
+            subscribedBlockNumber: toBlock,
+          }),
         );
       },
     );

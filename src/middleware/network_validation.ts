@@ -1,24 +1,27 @@
-import { type Database } from "../database";
 import { requireCond, ValidationErrors } from "../utils";
 
-export function validateChainId(
-  chainId: string | string[] | undefined,
-  dbs: Record<string, Database>,
-): void {
-  requireCond(
-    chainId !== undefined,
-    "no chainId params!",
-    ValidationErrors.InvalidFields,
-  );
-  requireCond(
-    typeof chainId === "string",
-    `invalid chainId params: ${chainId!.toString()}`,
-    ValidationErrors.InvalidFields,
-  );
-  chainId = chainId as string;
-  requireCond(
-    dbs[chainId] !== undefined,
-    `unknown chainId name: ${chainId}`,
-    ValidationErrors.InvalidFields,
-  );
+export function validateChainIds(
+  chainIds: string | string[] | undefined,
+  validChainIds: number[],
+): number[] {
+  if (chainIds === undefined) {
+    // fetch from all chains
+    return validChainIds;
+  } else {
+    if (typeof chainIds === "string") {
+      chainIds = [chainIds];
+    } else {
+      chainIds = chainIds as string[];
+    }
+
+    const res = chainIds.map((chainId) => parseInt(chainId));
+    for (const chainId of res) {
+      requireCond(
+        validChainIds.includes(chainId),
+        `unknown chainId name: ${chainId}`,
+        ValidationErrors.InvalidFields,
+      );
+    }
+    return res;
+  }
 }
