@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres
+    container_name: datbase
+    environment:
+      - POSTGRES_USER=$DB_USERNAME
+      - POSTGRES_PASSWORD=$DB_PASSWD
+      - POSTGRES_DB=$DB_NAME
+    env_file: ./.env
+    ports:
+      - 5432:5432
+    volumes:
+      - db:/var/lib/postgres
+  app:
+    container_name: indexer
+    depends_on:
+      - postgres
+    build: .
+    ports:
+      - 3000:3000
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=$DB_USERNAME
+      - DB_PASSWD=$DB_PASSWD
+
+volumes:
+  db:
